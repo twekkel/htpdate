@@ -1,7 +1,17 @@
-Changes in 1.2.2
+Changes in 1.2.3
 ----------------
 
+- Support URL path to be included, hostname/path, e.g. htpdate www.example.com/htpdate.html
+- Included several fixes as used in Chromium OS (thanks to Mike Frysinger)
+- Release on github
+- Bug fix: dropping privileges, when not specified
+
+
+1.2.2
+-----
+
 - Doc change only (removed reference to FreeBSD and Linux)
+
 
 1.2.1
 -----

@@ -1,5 +1,5 @@
 /*
-	htpdate v1.2.2
+	htpdate v1.2.3
 
 	Eddy Vervest <eddy@vervest.org>
 	http://www.vervest.org/htp
@@ -52,20 +52,21 @@
 #include <pwd.h>
 #include <grp.h>
 
-#define VERSION 				"1.2.2"
+#define VERSION 				"1.2.3"
 #define	MAX_HTTP_HOSTS			15				/* 16 web servers */
 #define	DEFAULT_HTTP_PORT		"80"
 #define	DEFAULT_PROXY_PORT		"8080"
 #define	DEFAULT_IP_VERSION		PF_UNSPEC		/* IPv6 and IPv4 */
 #define	DEFAULT_HTTP_VERSION	"1"				/* HTTP/1.1 */
 #define	DEFAULT_TIME_LIMIT		31536000		/* 1 year */
+#define ERR_TIMESTAMP			LONG_MAX		/* Err fetching date in getHTTPdate */
 #define	DEFAULT_MIN_SLEEP		1800			/* 30 minutes */
 #define	DEFAULT_MAX_SLEEP		115200			/* 32 hours */
 #define	MAX_DRIFT				32768000		/* 500 PPM */
 #define	MAX_ATTEMPT				2				/* Poll attempts */
 #define	DEFAULT_PID_FILE		"/var/run/htpdate.pid"
 #define	URLSIZE					128
-#define	BUFFERSIZE				1024
+#define	BUFFERSIZE				8192
 
 #define sign(x) (x < 0 ? (-1) : 1)
 
@@ -78,36 +79,36 @@ static int		logmode = 0;
 /* Make mktime timezone agnostic, see manpage timegm */
 time_t gmtmktime (struct tm *tm)
 {
-    char *tz;
-    time_t result;
+	char *tz;
+	time_t result;
 
-    /* Temporarily set timezone to UTC for conversion */
-    tz = getenv("TZ");
-    if (tz) {
+	/* Temporarily set timezone to UTC for conversion */
+	tz = getenv("TZ");
+	if (tz) {
 		tz = strdup (tz);
 	}
-    setenv("TZ", "", 1);
-    tzset();
+	setenv("TZ", "", 1);
+	tzset();
 
-    result = mktime (tm);
+	result = mktime (tm);
 
-    /* Restore timezone */
-    if (tz) {
-      setenv("TZ", tz, 1);
-      free (tz);
-    }
-    else {
-      unsetenv("TZ");
-    }
-    tzset();
+	/* Restore timezone */
+	if (tz) {
+		setenv("TZ", tz, 1);
+		free (tz);
+	}
+	else {
+		unsetenv("TZ");
+	}
+	tzset();
 
-    return result;
+	return result;
 }
 
 
 /* Insertion sort is more efficient (and smaller) than qsort for small lists */
-static void insertsort( int a[], int length ) {
-	int i, j, value;
+static void insertsort( long a[], long length ) {
+	long i, j, value;
 
 	for ( i = 1; i < length; i++ ) {
 		value = a[i];
@@ -121,23 +122,30 @@ static void insertsort( int a[], int length ) {
 /* Split argument in hostname/IP-address and TCP port
    Supports IPv6 literal addresses, RFC 2732.
 */
-static void splithostport( char **host, char **port ) {
-	char    *rb, *rc, *lb, *lc;
+static void splithostportpath( char **host, char **port, char **path ) {
+	char *rb, *rc, *lb, *lc, *ps;
 
 	lb = strchr( *host, '[' );
 	rb = strrchr( *host, ']' );
 	lc = strchr( *host, ':' );
 	rc = strrchr( *host, ':' );
+	ps = strchr( *host, '/' );
+
+	/* Extract URL path */
+	if ( ps != NULL ) {
+		ps[0] = '\0';
+		*path = ps + 1;
+	}
 
 	/* A (litteral) IPv6 address with portnumber */
 	if ( rb < rc && lb != NULL && rb != NULL ) {
 		rb[0] = '\0';
-	    *port = rc + 1;
+	 *port = rc + 1;
 		*host = lb + 1;
 		return;
 	}
 
-    /* A (litteral) IPv6 address without portnumber */
+	/* A (litteral) IPv6 address without portnumber */
 	if ( rb != NULL && lb != NULL ) {
 		rb[0] = '\0';
 		*host = lb + 1;
@@ -162,20 +170,21 @@ static void printlog( int is_error, char *format, ... ) {
 	(void) vsnprintf(buf, sizeof(buf), format, args);
 	va_end(args);
 
-    if ( logmode )
+	if ( logmode )
 		syslog(is_error?LOG_WARNING:LOG_INFO, "%s", buf);
 	else
 		fprintf(is_error?stderr:stdout, "%s\n", buf);
 }
 
 
-/* Drop or elevate privileges */
 static void swuid( int id ) {
 	if ( seteuid( id ) ) {
 		printlog( 1, "seteuid() %i", id );
 		exit(1);
 	}
 }
+
+
 static void swgid( int id ) {
 	if ( setegid( id ) ) {
 		printlog( 1, "setegid() %i", id );
@@ -184,7 +193,7 @@ static void swgid( int id ) {
 }
 
 
-static long getHTTPdate( char *host, char *port, char *proxy, char *proxyport, char *httpversion, int ipversion, int when ) {
+static long getHTTPdate( char *host, char *port, char *path, char *proxy, char *proxyport, char *httpversion, int ipversion, int when ) {
 	int					server_s;
 	int					rc;
 	struct addrinfo		hints, *res, *res0;
@@ -224,7 +233,7 @@ static long getHTTPdate( char *host, char *port, char *proxy, char *proxyport, c
 	/* Was the hostname and service resolvable? */
 	if ( rc ) {
 		printlog( 1, "%s host or service unavailable", host );
-		return(0);				/* Assume correct time */
+		return(ERR_TIMESTAMP);
 	}
 
 	/* Build a combined HTTP/1.0 and 1.1 HEAD request
@@ -233,7 +242,7 @@ static long getHTTPdate( char *host, char *port, char *proxy, char *proxyport, c
 	   Connection: close, allows the server the immediately close the
 	   connection after sending the response.
 	*/
-	snprintf(buffer, BUFFERSIZE, "HEAD %s/ HTTP/1.%s\r\nHost: %s\r\nUser-Agent: htpdate/"VERSION"\r\nPragma: no-cache\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n", url, httpversion, host);
+	snprintf(buffer, BUFFERSIZE, "HEAD %s/%s HTTP/1.%s\r\nHost: %s\r\nUser-Agent: htpdate/"VERSION"\r\nPragma: no-cache\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n", url, path, httpversion, host);
 
 	/* Loop through the available canonical names */
 	res = res0;
@@ -257,7 +266,7 @@ static long getHTTPdate( char *host, char *port, char *proxy, char *proxyport, c
 
 	if ( rc ) {
 		printlog( 1, "%s connection failed", host );
-		return(0);				/* Assume correct time */
+		return(ERR_TIMESTAMP);
 	}
 
 	/* Initialize timer */
@@ -283,7 +292,7 @@ static long getHTTPdate( char *host, char *port, char *proxy, char *proxyport, c
 	/* Receive data from the web server
 	   The return code from recv() is the number of bytes received
 	*/
-	if ( recv(server_s, buffer, BUFFERSIZE - 1, 0) != -1 ) {
+	if ( recv(server_s, buffer, BUFFERSIZE - 1, MSG_WAITALL) != -1 ) {
 
 		/* Assuming that network delay (server->htpdate) is neglectable,
 		   the received web server time "should" match the local time.
@@ -303,9 +312,9 @@ static long getHTTPdate( char *host, char *port, char *proxy, char *proxyport, c
 		rtt = ( timeofday.tv_sec - rtt ) * 1000000 + \
 			timeofday.tv_usec - when;
 
-		/* Look for the line that contains Date: */
-		if ( (pdate = strstr(buffer, "Date: ")) != NULL && strlen( pdate ) >= 35 ) {
-			strncpy(remote_time, pdate + 11, 24);
+		/* Look for the line that contains [dD]ate: */
+		if ( (pdate = strstr(buffer, "ate: ")) != NULL && strlen( pdate ) >= 35 ) {
+			strncpy(remote_time, pdate + 10, 24);
 
 			memset(&tm, 0, sizeof(struct tm));
 			if ( strptime( remote_time, "%d %b %Y %T", &tm) != NULL) {
@@ -416,7 +425,7 @@ static void showhelp() {
 	puts("htpdate version "VERSION"\n\
 Usage: htpdate [-046abdhlqstxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
          [-p precision] [-P <proxyserver>[:port]] [-u user[:group]]\n\
-         <host[:port]> ...\n\n\
+         <host[:port][/path]> ...\n\n\
   -0    HTTP/1.0 request\n\
   -4    Force IPv4 name resolution only\n\
   -6    Force IPv6 name resolution only\n\
@@ -513,19 +522,20 @@ int main( int argc, char *argv[] ) {
 	char				*host = NULL, *proxy = NULL, *proxyport = NULL;
 	char				*port = NULL;
 	char				*hostport = NULL;
+	char				*path = NULL;
 	char				*httpversion = DEFAULT_HTTP_VERSION;
 	char				*pidfile = DEFAULT_PID_FILE;
 	char				*user = NULL, *userstr = NULL, *group = NULL;
 	long long			sumtimes;
 	double				timeavg, drift = 0;
-	int					timedelta[(MAX_HTTP_HOSTS+1)*(MAX_HTTP_HOSTS+1)-1], timestamp;
-	int                 numservers, validtimes, goodtimes, mean;
+	long				timedelta[(MAX_HTTP_HOSTS+1)*(MAX_HTTP_HOSTS+1)-1], timestamp;
+	long				numservers, validtimes, goodtimes, mean;
 	int					nap = 0, when = 500000, precision = 0;
 	int					setmode = 0, burstmode = 0, try, offsetdetect;
 	int					i, burst, param;
 	int					daemonize = 0;
 	int					ipversion = DEFAULT_IP_VERSION;
-	int					timelimit = DEFAULT_TIME_LIMIT;
+	long				timelimit = DEFAULT_TIME_LIMIT;
 	int					minsleep = DEFAULT_MIN_SLEEP;
 	int					maxsleep = DEFAULT_MAX_SLEEP;
 	int					sleeptime = minsleep;
@@ -585,13 +595,13 @@ int main( int argc, char *argv[] ) {
 			}
 			precision *= 1000;
 			break;
-		case 'q':			/* query only */
+		case 'q':			/* query only (default) */
 			break;
 		case 's':			/* set time */
 			setmode = 2;
 			break;
 		case 't':			/* disable "sanity" time check */
-			timelimit = 2100000000;
+			timelimit = LONG_MAX - 1;
 			break;
 		case 'u':			/* drop root privileges and run as user */
 			user = (char *)optarg;
@@ -632,7 +642,7 @@ int main( int argc, char *argv[] ) {
 		case 'P':
 			proxy = (char *)optarg;
 			proxyport = DEFAULT_PROXY_PORT;
-			splithostport( &proxy, &proxyport );
+			splithostportpath( &proxy, &proxyport, &path );
 			break;
 		case '?':
 			return 1;
@@ -703,7 +713,7 @@ int main( int argc, char *argv[] ) {
 		hostport = (char *)argv[i];
 		host = strdup(hostport);
 		port = DEFAULT_HTTP_PORT;
-		splithostport( &host, &port );
+		splithostportpath( &host, &port, &path );
 
 		/* if burst mode, reset "when" */
 		if ( burstmode ) {
@@ -720,7 +730,7 @@ int main( int argc, char *argv[] ) {
 			do {
 				if ( debug ) printlog( 0, "burst: %d try: %d when: %d", \
 					burst + 1, MAX_ATTEMPT - try + 1, when );
-				timestamp = getHTTPdate( host, port, proxy, proxyport,\
+				timestamp = getHTTPdate( host, port, path, proxy, proxyport,\
 						httpversion, ipversion, when );
 				try--;
 			} while ( timestamp && try );
@@ -796,7 +806,7 @@ int main( int argc, char *argv[] ) {
 					printlog( 1, "Time change failed" );
 
 			/* Drop root privileges again */
-			swuid( sw_uid );
+			if ( sw_uid ) swuid( sw_uid );
 
 			if ( daemonize ) {
 				if ( starttime ) {

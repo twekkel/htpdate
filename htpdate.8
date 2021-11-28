@@ -1,4 +1,4 @@
-.TH "HTPDATE" "8" "version 1.2.2" "htpdate"
+.TH "HTPDATE" "8" "version 1.2.3" "htpdate"
 .SH "NAME"
 htpdate \- Time synchronization (daemon)
 .SH "SYNOPSIS"
@@ -80,11 +80,11 @@ Portnumber (default 80 and 8080 for proxy server)
 .SH "EXAMPLES"
 Request time from web server (don't update local clock):
 .br
-\&       htpdate \-q www.example.com
+\&       htpdate www.example.com
 .P
-Verbose output (don't update local clock):
+Debug output (don't update local clock):
 .br
-\&       htpdate \-d \-q www.example.com
+\&       htpdate \-d www.example.com/htpdate.html
 .P
 Adjust time smoothly and log output to syslog (eg. cron):
 .br

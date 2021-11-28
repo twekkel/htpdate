@@ -2,8 +2,8 @@ prefix = $(DESTDIR)/usr
 bindir = ${prefix}/bin
 mandir = ${prefix}/share/man
 
-CC = gcc
-CFLAGS += -Wall -std=c99 -pedantic -O2
+CC ?= gcc
+CFLAGS += -Wall -std=c11 -pedantic -O2
 
 INSTALL = /usr/bin/install -c
 STRIP = /usr/bin/strip -s
@@ -11,7 +11,7 @@ STRIP = /usr/bin/strip -s
 all: htpdate
 
 htpdate: htpdate.c
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o htpdate htpdate.c
+	$(CC) $(CFLAGS) -o htpdate htpdate.c
 
 install: all
 	$(STRIP) htpdate
@@ -20,6 +20,9 @@ install: all
 	mkdir -p $(mandir)/man8
 	$(INSTALL) -m 644 htpdate.8 $(mandir)/man8/htpdate.8
 	gzip -f -9 $(mandir)/man8/htpdate.8
+
+test:
+	./htpdate www.example.com
 
 clean:
 	rm -rf htpdate
