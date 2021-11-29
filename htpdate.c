@@ -509,7 +509,7 @@ static void runasdaemon( char *pidfile ) {
 			printlog( 1, "Error writing pid file" );
 			exit(1);
 		} else {
-			fprintf( pid_file, "%u\n", (unsigned short)pid );
+			fprintf( pid_file, "%d\n", pid );
 			fclose( pid_file );
 		}
 		printlog( 0, "htpdate version "VERSION" started" );
