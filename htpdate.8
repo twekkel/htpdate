@@ -3,7 +3,7 @@
 htpdate \- Time synchronization (daemon)
 .SH "SYNOPSIS"
 .B htpdate
-[\-046abdhlqstxD] [\-i pid file] [\-m minpoll] [\-M maxpoll] [\-p precision] [\-P <proxyserver>[:port]] [\-u user[:group]] <host[:port]> ...
+[\-046abdhlqstvxD] [\-i pid file] [\-m minpoll] [\-M maxpoll] [\-p precision] [\-P <proxyserver>[:port]] [\-u user[:group]] <host[:port]> ...
 .SH "DESCRIPTION"
 The HTTP Time Protocol (HTP) is used to synchronize a computer's
 time with web servers as reference time source. Htp will synchronize
@@ -61,6 +61,9 @@ Turn off sanity time check. By default a time offset larger than a year, compare
 .TP
 .I \-u
 Set the user and group that the server normally runs at (default is root).
+.TP
+.I \-v
+Show version.
 .TP
 .I \-x
 Let htpdate compensate for the systematisch clock drift.

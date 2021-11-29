@@ -22,6 +22,7 @@ install: all
 	gzip -f -9 $(mandir)/man8/htpdate.8
 
 test:
+	./htpdate -v
 	./htpdate www.example.com
 	./htpdate www.example.com www.example.com:80/htpdate.html
 	./htpdate -04q www.example.com/

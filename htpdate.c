@@ -423,7 +423,7 @@ static int htpdate_adjtimex( double drift ) {
 
 static void showhelp() {
 	puts("htpdate version "VERSION"\n\
-Usage: htpdate [-046abdhlqstxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
+Usage: htpdate [-046abdhlqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
          [-p precision] [-P <proxyserver>[:port]] [-u user[:group]]\n\
          <host[:port][/path]> ...\n\n\
   -0    HTTP/1.0 request\n\
@@ -444,6 +444,7 @@ Usage: htpdate [-046abdhlqstxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
   -s    set time\n\
   -t    turn off sanity time check\n\
   -u    run daemon as user\n\
+  -v    version\n\
   -x    adjust kernel clock\n\
   host  web server hostname or ip address (maximum of 16)\n\
   port  port number (default 80 and 8080 for proxy server)\n");
@@ -550,7 +551,7 @@ int main( int argc, char *argv[] ) {
 
 
 	/* Parse the command line switches and arguments */
-	while ( (param = getopt(argc, argv, "046abdhi:lm:p:qstu:xDM:P:") ) != -1)
+	while ( (param = getopt(argc, argv, "046abdhi:lm:p:qstu:vxDM:P:") ) != -1)
 	switch( param ) {
 
 		case '0':			/* HTTP/1.0 */
@@ -626,6 +627,9 @@ int main( int argc, char *argv[] ) {
 				}
 			}
 			break;
+		case 'v':			/* print version */
+			printf( "htpdate version %s\n", VERSION );
+			exit(0);
 		case 'x':			/* adjust time and "kernel" */
 			setmode = 3;
 			break;
