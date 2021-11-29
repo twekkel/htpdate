@@ -165,7 +165,7 @@ static void splithostportpath( char **host, char **port, char **path ) {
 /* Printlog is a slighty modified version from the one used in rdate */
 static void printlog( int is_error, char *format, ... ) {
 	va_list args;
-	char buf[128];
+	char buf[8192];
 
 	va_start(args, format);
 	(void) vsnprintf(buf, sizeof(buf), format, args);
@@ -315,6 +315,9 @@ static long getHTTPdate( char *host, char *port, char *path, char *proxy, char *
 
 		/* Look for the line that contains [dD]ate: */
 		if ( (pdate = strstr(buffer, "ate: ")) != NULL && strlen( pdate ) >= 35 ) {
+			if (debug == 2) {
+				printlog(0, "%s\n", buffer);
+			}
 			strncpy(remote_time, pdate + 10, 24);
 
 			memset(&tm, 0, sizeof(struct tm));
@@ -571,7 +574,7 @@ int main( int argc, char *argv[] ) {
 			burstmode = 1;
 			break;
 		case 'd':			/* turn debug on */
-			debug = 1;
+			debug++;
 			break;
 		case 'h':			/* show help */
 			showhelp();
