@@ -53,7 +53,7 @@
 #include <grp.h>
 
 #define VERSION 				"1.2.3"
-#define	MAX_HTTP_HOSTS			15				/* 16 web servers */
+#define	MAX_HTTP_HOSTS			16				/* 16 web servers */
 #define	DEFAULT_HTTP_PORT		"80"
 #define	DEFAULT_PROXY_PORT		"8080"
 #define	DEFAULT_IP_VERSION		PF_UNSPEC		/* IPv6 and IPv4 */
@@ -530,7 +530,7 @@ int main( int argc, char *argv[] ) {
 	char				*user = NULL, *userstr = NULL, *group = NULL;
 	long long			sumtimes;
 	double				timeavg, drift = 0;
-	long				timedelta[(MAX_HTTP_HOSTS+1)*(MAX_HTTP_HOSTS+1)-1], timestamp;
+	long				timedelta[MAX_HTTP_HOSTS*MAX_HTTP_HOSTS-1], timestamp;
 	long				numservers, validtimes, goodtimes, mean;
 	int					nap = 0, when = 500000, precision = 0;
 	int					setmode = 0, burstmode = 0, try, offsetdetect;
