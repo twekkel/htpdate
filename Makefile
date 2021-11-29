@@ -23,6 +23,15 @@ install: all
 
 test:
 	./htpdate www.example.com
+	./htpdate www.example.com www.example.com:80/htpdate.html
+	./htpdate -04q www.example.com/
+	./htpdate -6q www.example.com
+	./htpdate -t www.example.com
+	./htpdate 93.184.216.34
+	./htpdate 93.184.216.34:80
+	./htpdate [2606:2800:220:1:248:1893:25c8:1946]
+	./htpdate [2606:2800:220:1:248:1893:25c8:1946]:80
+	./htpdate -h
 
 clean:
 	rm -rf htpdate
