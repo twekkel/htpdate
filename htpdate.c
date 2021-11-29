@@ -125,6 +125,7 @@ static void insertsort( long a[], long length ) {
 static void splithostportpath( char **host, char **port, char **path ) {
 	char *rb, *rc, *lb, *lc, *ps;
 
+	*path = "";
 	lb = strchr( *host, '[' );
 	rb = strrchr( *host, ']' );
 	lc = strchr( *host, ':' );
