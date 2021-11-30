@@ -67,6 +67,7 @@
 #define	DEFAULT_PID_FILE		"/var/run/htpdate.pid"
 #define	URLSIZE					128
 #define	BUFFERSIZE				8192
+#define	PRINTBUFFERSIZE			BUFFERSIZE
 
 #define sign(x) (x < 0 ? (-1) : 1)
 
@@ -165,7 +166,7 @@ static void splithostportpath( char **host, char **port, char **path ) {
 /* Printlog is a slighty modified version from the one used in rdate */
 static void printlog( int is_error, char *format, ... ) {
 	va_list args;
-	char buf[8192];
+	char buf[PRINTBUFFERSIZE];
 
 	va_start(args, format);
 	(void) vsnprintf(buf, sizeof(buf), format, args);
