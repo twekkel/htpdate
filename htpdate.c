@@ -316,7 +316,7 @@ static long getHTTPdate( char *host, char *port, char *path, char *proxy, char *
 
 		/* Look for the line that contains [dD]ate: */
 		if ( (pdate = strstr(buffer, "ate: ")) != NULL && strlen( pdate ) >= 35 ) {
-			if (debug == 2) {
+			if (debug > 2) {
 				printlog(0, "%s\n", buffer);
 			}
 			strncpy(remote_time, pdate + 10, 24);
@@ -330,7 +330,7 @@ static long getHTTPdate( char *host, char *port, char *path, char *proxy, char *
 
 			/* Print host, raw timestamp, round trip time */
 			if ( debug )
-				printlog( 0, "%-25s %s %s (%.3f) => %li", host, port, remote_time, \
+				printlog( 0, "%-25s %s, %s (%.3f) => %li", host, port, remote_time, \
 				  rtt * 1e-6, timevalue.tv_sec - timeofday.tv_sec );
 
 		} else {
@@ -575,7 +575,7 @@ int main( int argc, char *argv[] ) {
 			burstmode = 1;
 			break;
 		case 'd':			/* turn debug on */
-			debug++;
+			if (debug <= 3) debug++;
 			break;
 		case 'h':			/* show help */
 			showhelp();
@@ -737,7 +737,7 @@ int main( int argc, char *argv[] ) {
 			/* Retry if first poll shows time offset */
 			try = MAX_ATTEMPT;
 			do {
-				if ( debug ) printlog( 0, "burst: %d try: %d when: %d", \
+				if ( debug > 1 ) printlog( 0, "burst: %d try: %d when: %d", \
 					burst + 1, MAX_ATTEMPT - try + 1, when );
 				timestamp = getHTTPdate( host, port, path, proxy, proxyport,\
 						httpversion, ipversion, when );
@@ -797,7 +797,7 @@ int main( int argc, char *argv[] ) {
 
 		timeavg = sumtimes/(double)goodtimes;
 
-		if ( debug ) {
+		if ( debug > 1 ) {
 			printlog( 0, "#: %d mean: %d average: %.3f", goodtimes, \
 					mean, timeavg );
 		}
