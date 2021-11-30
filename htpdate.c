@@ -317,7 +317,7 @@ static long getHTTPdate( char *host, char *port, char *path, char *proxy, char *
 		/* Look for the line that contains [dD]ate: */
 		if ( (pdate = strstr(buffer, "ate: ")) != NULL && strlen( pdate ) >= 35 ) {
 			if (debug > 2) {
-				printlog(0, "%s\n", buffer);
+				printlog(0, "%s", buffer);
 			}
 			strncpy(remote_time, pdate + 10, 24);
 
