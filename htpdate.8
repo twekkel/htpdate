@@ -79,7 +79,16 @@ Web server hostname or ip-address. Upto 16 hosts may be specified, but in
 general 3 to 5 hosts should be enough for a redundant and accurate setup.
 .TP 
 .I port
-Portnumber (default 80 and 8080 for proxy server)
+Port number (default 80 and 8080 for proxy server)
+.TP
+.I path
+Path to resource.
+.SH "ENVIRONMENT"
+Htpdate supports proxies for HTTP connections. The standard way to specify the proxy location, which htpdate recognizes, is using the following environment variable:
+.IP "\fBhttp_proxy\fR" 4
+.IX Item "http_proxy"
+.PD
+If set, the http_proxy variable should contain the URL of the proxy for HTTP connections.
 .SH "EXAMPLES"
 Request time from web server (don't update local clock):
 .br

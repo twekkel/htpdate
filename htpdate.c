@@ -672,6 +672,17 @@ int main( int argc, char *argv[] ) {
 		exit(1);
 	}
 
+	/* Use http_proxy environment variable */
+	if ( getenv("http_proxy") ) {
+	    if ( (proxy = strstr(getenv("http_proxy"), "http://")) == NULL ) {
+			printlog(1, "Invalid proxy specified: %s", getenv("http_proxy"));
+			exit(1);
+		}
+		if (debug) printlog(0, "Using proxy: %s", proxy);
+		proxy += 7;
+		splithostportpath( &proxy, &proxyport, &path );
+	}
+
 	/* One must be "root" to change the system time */
 	if ( (getuid() != 0) && (setmode || daemonize) ) {
 		fputs( "Only root can change time\n", stderr );
