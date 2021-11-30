@@ -14,51 +14,51 @@ and time from remote machines via a network. Htpdate works through
 proxy servers. Accuracy of htpdate will be usually within 0.5 seconds
 (better with multiple servers). If this is not good enough for you,
 try the ntpd package.
-.fi 
+.fi
 .SH OPTIONS
-.TP 
+.TP
 .I \-0
 HTTP/1.0 request (default is HTTP/1.1).
-.TP 
+.TP
 .I \-4
 Force IPv4 name resolution only. Default behaviour is to try IPv6 first and fall back to IPv4.
-.TP 
+.TP
 .I \-6
 Force IPv6 name resolution only.
-.TP 
+.TP
 .I \-a
 Adjust time smoothly (default in daemon mode).
-.TP 
+.TP
 .I \-b
 Burst mode uses multiple polls for each web server to enhance accuracy.
-.TP 
+.TP
 .I \-d
 Turn debug on. Shows the "raw" timestamp, round trip time, time delta and and basic statistics of web server responses. Useful to determining the quality of a specific web server as time source. Multiple -d options increase verbosity. The maximum is 3.
-.TP 
+.TP
 .I \-h
 Show help.
-.TP 
+.TP
 .I \-i
 Set the pid file (default /var/run/htpdate.pid).
-.TP 
+.TP
 .I \-l
 Use syslog for output (levels LOG_WARNING and LOG_INFO). Convenient if you use htpdate from cron.
-.TP 
+.TP
 .I \-m \-M
 These options specify the minimum (\-m) and maximum (\-M) polling intervals for HTP requests, in seconds. The default range is between 30 minutes and 32 hours. Htpdate calculates the optimal polling frequency between minimum and maximum values. Only applicable when running in daemon mode.
 .TP
 .I \-n
 Don't use a proxy, even if the appropriate http_proxy environment variable is defined.
-.TP 
+.TP
 .I \-p
 Precision (in milliseconds) specifies the operating accuracy of htpdate. Internally htpdate uses a different algorithm to detect a time offset, when precision is specified. Precision only has effect in daemon mode. Use with causion.
-.TP 
+.TP
 .I \-q
 Query web server and display time, but do not change time (default in interactive mode).
-.TP 
+.TP
 .I \-s
 Set time immediate. In daemon mode \-s only applies the first poll.
-.TP 
+.TP
 .I \-t
 Turn off sanity time check. By default a time offset larger than a year, compared to current localtime, is rejected. With \-t set, any time stamp will be accepted.
 .TP
@@ -73,14 +73,14 @@ Let htpdate compensate for the systematisch clock drift.
 .TP
 .I \-D
 Run as daemon (requires root privileges).
-.TP 
+.TP
 .I \-P
-Proxy server hostname or ip-address.
-.TP 
+Proxy server hostname or IP address.
+.TP
 .I host
-Web server hostname or ip-address. Upto 16 hosts may be specified, but in
+Web server hostname or IP address. Upto 16 hosts may be specified, but in
 general 3 to 5 hosts should be enough for a redundant and accurate setup.
-.TP 
+.TP
 .I port
 Port number (default 80 and 8080 for proxy server)
 .TP
@@ -95,27 +95,31 @@ If set, the http_proxy variable should contain the URL of the proxy for HTTP con
 .SH "EXAMPLES"
 Request time from web server (don't update local clock):
 .br
-\&       htpdate www.example.com
+\&    htpdate www.example.com
 .P
 Debug output (don't update local clock):
 .br
-\&       htpdate \-d www.example.com/htpdate.html
+\&    htpdate \-d www.example.com
+.br
+or for more verbosity
+.br
+\&    htpdate \-dd www.example.com
 .P
 Adjust time smoothly and log output to syslog (eg. cron):
 .br
-\&       htpdate \-a \-l www.example.com
+\&    htpdate \-al www.example.com:80/htpdate.html
 .P
 HTTP/1.0 request in IPv6 literal format (RFC 2732):
 .br
-\&       htpdate \-0 [2001:DB8:1af6::123]:80
+\&    htpdate \-0 [2001:DB8:1af6::123]:80
 .P
 Run htpdate as daemon:
 .br
-\&       htpdate \-D www.example.com
+\&    htpdate \-D www.example.com
 .P
 Daemon mode for the security minded:
 .br
-\&       htpdate \-D \-u nobody:nogroup www.example.com
+\&    htpdate \-D \-u nobody:nogroup www.example.com
 .SH "AUTHOR"
 Eddy Vervest <eddy@vervest.org>, http://www.vervest.org/htp
 .SH "SEE ALSO"
