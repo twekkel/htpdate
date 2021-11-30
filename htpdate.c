@@ -428,7 +428,7 @@ static int htpdate_adjtimex( double drift ) {
 
 static void showhelp() {
 	puts("htpdate version "VERSION"\n\
-Usage: htpdate [-046abdhlqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
+Usage: htpdate [-046abdhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
          [-p precision] [-P <proxyserver>[:port]] [-u user[:group]]\n\
          <host[:port][/path]> ...\n\n\
   -0    HTTP/1.0 request\n\
@@ -443,6 +443,7 @@ Usage: htpdate [-046abdhlqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
   -l    use syslog for output\n\
   -m    minimum poll interval\n\
   -M    maximum poll interval\n\
+  -n    no proxy (don't use http_proxy environment variable)\n\
   -p    precision (ms)\n\
   -P    proxy server\n\
   -q    query only, don't make time changes (default)\n\
@@ -540,6 +541,7 @@ int main( int argc, char *argv[] ) {
 	int					setmode = 0, burstmode = 0, try, offsetdetect;
 	int					i, burst, param;
 	int					daemonize = 0;
+	int					noproxyenv = 0;
 	int					ipversion = DEFAULT_IP_VERSION;
 	long				timelimit = DEFAULT_TIME_LIMIT;
 	int					minsleep = DEFAULT_MIN_SLEEP;
@@ -556,7 +558,7 @@ int main( int argc, char *argv[] ) {
 
 
 	/* Parse the command line switches and arguments */
-	while ( (param = getopt(argc, argv, "046abdhi:lm:p:qstu:vxDM:P:") ) != -1)
+	while ( (param = getopt(argc, argv, "046abdhi:lm:np:qstu:vxDM:P:") ) != -1)
 	switch( param ) {
 
 		case '0':			/* HTTP/1.0 */
@@ -592,6 +594,9 @@ int main( int argc, char *argv[] ) {
 				exit(1);
 			}
 			sleeptime = minsleep;
+			break;
+		case 'n':			/* don't get proxy from environment */
+			noproxyenv = 1;
 			break;
 		case 'p':			/* precision */
 			precision = atoi(optarg) ;
@@ -673,12 +678,12 @@ int main( int argc, char *argv[] ) {
 	}
 
 	/* Use http_proxy environment variable */
-	if ( getenv("http_proxy") ) {
+	if ( getenv("http_proxy") && !noproxyenv ) {
 	    if ( (proxy = strstr(getenv("http_proxy"), "http://")) == NULL ) {
 			printlog(1, "Invalid proxy specified: %s", getenv("http_proxy"));
 			exit(1);
 		}
-		if (debug) printlog(0, "Using proxy: %s", proxy);
+		if (debug) printlog(0, "Proxy: %s", proxy);
 		proxy += 7;
 		splithostportpath( &proxy, &proxyport, &path );
 	}
