@@ -351,6 +351,7 @@ static long getHTTPdate( char *host, char *port, char *path, char *proxy, char *
 
 static int setclock( double timedelta, int setmode ) {
 	struct timeval		timeofday;
+	char   buffer[32] = {'\0'};
 
 	if ( timedelta == 0 ) {
 		printlog( 0, "No time correction needed" );
@@ -382,7 +383,8 @@ static int setclock( double timedelta, int setmode ) {
 		timeofday.tv_sec  = (long)timedelta;	
 		timeofday.tv_usec = (long)(timedelta - timeofday.tv_sec) * 1000000;	
 
-		printlog( 0, "Set: %s", asctime(localtime(&timeofday.tv_sec)) );
+		strftime(buffer, sizeof(buffer), "%c", localtime(&timeofday.tv_sec));
+		printlog( 0, "Set time: %s", buffer );
 
 		/* Become root */
 		swuid(0);
