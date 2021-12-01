@@ -1,5 +1,5 @@
 prefix = $(DESTDIR)/usr
-bindir = ${prefix}/bin
+bindir = ${prefix}/sbin
 mandir = ${prefix}/share/man
 
 CC ?= gcc

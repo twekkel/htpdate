@@ -11,39 +11,39 @@
 # Short-Description: Start htpdate daemon
 ### END INIT INFO
 
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-test -x /usr/bin/htpdate || exit 0
+NAME="htpdate"
+DAEMON="/usr/sbin/${NAME}"
+PIDFILE="/var/run/${NAME}.pid"
 
-PIDFILE="/var/run/htpdate.pid"
+test -x ${DAEMON} || exit 0
+
 SERVERS="www.example.com"
+ARGS="-Ds -i ${PIDFILE} ${SERVERS}"
 
-# See how we were called.
 case "$1" in
-	start)
-		echo "Starting HTTP Time Protocol daemon: htpdate"
-		# Set the time first before daemonizing, because the time offset
-		# might be too big for smooth time adjustment
-		/usr/bin/htpdate -D -s -i $PIDFILE $SERVERS
-		;;
-	stop)
-		echo "Stopping HTTP Time Protocol daemon: htpdate"
-		if [ -f $PIDFILE ]
-		then
-			kill `cat $PIDFILE`
-		else
-			echo "$PIDFILE not found"
-		fi
-		rm -f $PIDFILE
-		;;
-	restart)
-		$0 stop
-		$0 start
-		;;
-	*)
-		echo "Usage: $0 {start|stop|restart}"
-		exit 1
+    start)
+        echo "Starting HTTP Time Protocol daemon: ${NAME}"
+        ${DAEMON} ${ARGS}
+        ;;
+    stop)
+        echo "Stopping HTTP Time Protocol daemon: ${NAME}"
+        if [ -f $PIDFILE ]
+        then
+            kill `cat $PIDFILE`
+        else
+            echo "$PIDFILE not found"
+        fi
+        rm -f $PIDFILE
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
 esac
 
 exit 0
-
-# vi:set ts=4:
