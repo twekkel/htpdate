@@ -438,6 +438,7 @@ Usage: htpdate [-046abdhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
   -b    burst mode\n\
   -d    debug mode\n\
   -D    daemon mode\n\
+  -F    run daemon in foreground\n\
   -h    help\n\
   -i    pid file\n\
   -l    use syslog for output\n\
@@ -518,7 +519,6 @@ static void runasdaemon( char *pidfile ) {
 			fprintf( pid_file, "%d\n", pid );
 			fclose( pid_file );
 		}
-		printlog( 0, "htpdate version "VERSION" started" );
 		exit(0);
 	}
 
@@ -540,7 +540,7 @@ int main( int argc, char *argv[] ) {
 	int					nap = 0, when = 500000, precision = 0;
 	int					setmode = 0, burstmode = 0, try, offsetdetect;
 	int					i, burst, param;
-	int					daemonize = 0;
+	int					daemonize = 0, foreground = 0;
 	int					noproxyenv = 0;
 	int					ipversion = DEFAULT_IP_VERSION;
 	long				timelimit = DEFAULT_TIME_LIMIT;
@@ -558,7 +558,7 @@ int main( int argc, char *argv[] ) {
 
 
 	/* Parse the command line switches and arguments */
-	while ( (param = getopt(argc, argv, "046abdhi:lm:np:qstu:vxDM:P:") ) != -1)
+	while ( (param = getopt(argc, argv, "046abdhi:lm:np:qstu:vxDFM:P:") ) != -1)
 	switch( param ) {
 
 		case '0':			/* HTTP/1.0 */
@@ -647,6 +647,9 @@ int main( int argc, char *argv[] ) {
 			daemonize = 1;
 			logmode = 1;
 			break;
+		case 'F':			/* run daemon in foreground, don't fork */
+			foreground = 1;
+			break;
 		case 'M':			/* maximum poll interval */
 			if ( ( maxsleep = atoi(optarg) ) <= 0 ) {
 				fputs( "Invalid sleep time\n", stderr );
@@ -689,7 +692,7 @@ int main( int argc, char *argv[] ) {
 	}
 
 	/* One must be "root" to change the system time */
-	if ( (getuid() != 0) && (setmode || daemonize) ) {
+	if ( (getuid() != 0) && (setmode || daemonize || foreground) ) {
 		fputs( "Only root can change time\n", stderr );
 		exit(1);
 	}
@@ -697,9 +700,12 @@ int main( int argc, char *argv[] ) {
 	/* Run as a daemonize when -D is set */
 	if ( daemonize ) {
 		runasdaemon( pidfile );
-		/* Query only mode doesn't exist in daemon mode */
-		if ( !setmode )
-			setmode = 1;
+	}
+
+	/* Query only mode doesn't exist in daemon or foreground mode */
+	if ( daemonize || foreground ) {
+		printlog( 0, "htpdate version "VERSION" started" );
+		if ( !setmode ) setmode = 1;
 	}
 
 	/* Now we are root, we drop the privileges (if specified) */
@@ -719,7 +725,7 @@ int main( int argc, char *argv[] ) {
 		nap = 500000;
 	}
 
-	/* Infinite poll cycle loop in daemonize mode */
+	/* Infinite poll cycle loop in daemonize or foreground mode */
 	do {
 
 	/* Initialize number of received valid timestamps, good timestamps
@@ -786,7 +792,7 @@ int main( int argc, char *argv[] ) {
 		} while ( burst < (argc - optind) * burstmode );
 
 		/* Sleep for a while, unless we detected a time offset */
-		if ( daemonize && !offsetdetect )
+		if ( (daemonize || foreground) && !offsetdetect )
 			sleep( sleeptime / numservers );
 
 	}
@@ -819,7 +825,7 @@ int main( int argc, char *argv[] ) {
 		}
 
 		/* Do I really need to change the time?  */
-		if ( sumtimes || !daemonize ) {
+		if ( sumtimes || !(daemonize || foreground) ) {
 			/* If a precision was specified and the time offset is small
 			   (< +-1 second), adjust the time with the value of precision
 			*/
@@ -833,7 +839,7 @@ int main( int argc, char *argv[] ) {
 			/* Drop root privileges again */
 			if ( sw_uid ) swuid( sw_uid );
 
-			if ( daemonize ) {
+			if ( daemonize || foreground ) {
 				if ( starttime ) {
 					/* Calculate systematic clock drift */
 					drift = timeavg / ( time(NULL) - starttime );
@@ -865,13 +871,13 @@ int main( int argc, char *argv[] ) {
 			if ( sleeptime < maxsleep )
 				sleeptime <<= 1;
 		}
-		if ( debug && daemonize )
+		if ( debug && (daemonize || foreground) )
 			printlog( 0, "poll %ld s", sleeptime ); 
 
 	} else {
 		printlog( 1, "No server suitable for synchronization found" );
 		/* Sleep for minsleep to avoid flooding */
-		if ( daemonize )
+		if ( daemonize || foreground )
 			sleep( minsleep );
 		else
 			exit(1);
@@ -882,7 +888,7 @@ int main( int argc, char *argv[] ) {
 		setmode = 1;
 	}
 
-	} while ( daemonize );		/* end of infinite while loop */
+	} while ( daemonize || foreground );		/* end of infinite while loop */
 
 	exit(0);
 }
