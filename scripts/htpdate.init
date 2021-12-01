@@ -1,14 +1,13 @@
 #!/bin/sh
-#
-# A minimal init script for htpdate
 
 ### BEGIN INIT INFO
-# Provides:        htpdate
-# Required-Start:  $network $remote_fs $syslog
-# Required-Stop:   $network $remote_fs $syslog
-# Default-Start:   2 3 4 5
-# Default-Stop:
-# Short-Description: Start htpdate daemon
+# Provides:          htpdate
+# Required-Start:    $network $remote_fs $syslog
+# Required-Stop:     $network $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: htpdate time synchronization
+# Description:       htpdate is a time synchronization daemon
 ### END INIT INFO
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
