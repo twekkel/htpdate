@@ -1,0 +1,14 @@
+[Unit]
+Description=HTTP Time Protocol daemon (htpdate)
+Documentation=man:htpdate(8)
+After=network-online.target
+
+[Service]
+Type=exec
+Environment=HTPDATE_ARGS="-lst www.example.com"
+#Environment=HTPDATE_ARGS="-lst -P proxy.internal:8080 www.example.com"
+EnvironmentFile=-/etc/default/htpdate
+ExecStart=/usr/sbin/htpdate -F $HTPDATE_ARGS
+
+[Install]
+WantedBy=multi-user.target
