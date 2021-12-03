@@ -199,7 +199,7 @@ static long getHTTPdate(
 
     int                 server_s;
     int                 rc;
-    struct addrinfo     hints, *res, *res0;
+    struct addrinfo     hints, *res;
     struct tm           tm;
     struct timeval      timevalue = {LONG_MAX, 0};
     struct timeval      timeofday;
@@ -227,10 +227,10 @@ static long getHTTPdate(
     hints.ai_flags = AI_CANONNAME;
 
     if (proxy == NULL) {
-        rc = getaddrinfo(host, port, &hints, &res0);
+        rc = getaddrinfo(host, port, &hints, &res);
     } else {
         snprintf(url, URLSIZE, "http://%s:%s", host, port);
-        rc = getaddrinfo(proxy, proxyport, &hints, &res0);
+        rc = getaddrinfo(proxy, proxyport, &hints, &res);
     }
 
     /* Was the hostname and service resolvable? */
@@ -255,7 +255,6 @@ static long getHTTPdate(
         url, path, httpversion, host);
 
     /* Loop through the available canonical names */
-    res = res0;
     do {
         server_s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
         if (server_s < 0) {
@@ -272,7 +271,7 @@ static long getHTTPdate(
         break;
     } while ((res = res->ai_next));
 
-    freeaddrinfo(res0);
+    freeaddrinfo(res);
 
     if (rc) {
         printlog(1, "%s connection failed", host);
