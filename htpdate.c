@@ -322,11 +322,11 @@ static long getHTTPdate(
         rtt = (timeofday.tv_sec - rtt) * 1000000 + timeofday.tv_usec - when;
 
         /* Look for the line that contains [dD]ate: */
-        if ((pdate = strcasestr(buffer, "ate: ")) != NULL && strlen(pdate) >= 35) {
+        if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
             if (debug > 2) {
                 printlog(0, "%s", buffer);
             }
-            strncpy(remote_time, pdate + 10, 24);
+            strncpy(remote_time, pdate + 11, 24);
 
             memset(&tm, 0, sizeof(struct tm));
             if (strptime(remote_time, "%d %b %Y %T", &tm) != NULL) {
