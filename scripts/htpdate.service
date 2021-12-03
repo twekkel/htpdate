@@ -5,8 +5,8 @@ After=network-online.target
 
 [Service]
 Type=exec
-Environment=HTPDATE_ARGS="-lst www.example.com"
-#Environment=HTPDATE_ARGS="-lst -P proxy.internal:8080 www.example.com"
+Environment=HTPDATE_ARGS="-st -m 5 -u nobody:nogroup www.example.com www.example.com:80 www.example.com/index.html"
+#Environment=HTPDATE_ARGS="-st -m 5 -u nobody:nogroup -P proxy.internal:8080 www.example.com"
 EnvironmentFile=-/etc/default/htpdate
 ExecStart=/usr/sbin/htpdate -F $HTPDATE_ARGS
 
