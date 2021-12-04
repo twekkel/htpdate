@@ -77,33 +77,6 @@ static int debug   = 0;
 static int logmode = 0;
 
 
-/* Make mktime timezone agnostic, see man page timegm */
-time_t gmtmktime (struct tm *tm) {
-    char   *tz;
-    time_t result;
-
-    /* Temporarily set timezone to UTC for conversion */
-    tz = getenv("TZ");
-    if (tz) tz = strdup (tz);
-    setenv("TZ", "", 1);
-    tzset();
-
-    result = mktime (tm);
-
-    /* Restore timezone */
-    if (tz) {
-        setenv("TZ", tz, 1);
-        free (tz);
-    }
-    else {
-        unsetenv("TZ");
-    }
-    tzset();
-
-    return result;
-}
-
-
 /* Insertion sort is more efficient (and smaller) than qsort for small lists */
 static void insertsort(long a[], long length) {
     long i, j, value;
@@ -329,7 +302,7 @@ static long getHTTPdate(
 
             memset(&tm, 0, sizeof(struct tm));
             if (strptime(remote_time, "%d %b %Y %T", &tm) != NULL) {
-                timevalue.tv_sec = gmtmktime(&tm);
+                timevalue.tv_sec = timegm(&tm);
             } else {
                 printlog(1, "%s unknown time format", host);
             }
