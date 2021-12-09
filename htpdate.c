@@ -175,8 +175,7 @@ static long getHTTPdate(
     struct addrinfo     hints, *res;
     struct tm           tm;
     struct timeval      timevalue = {LONG_MAX, 0};
-    struct timeval      timeofday;
-    struct timespec     sleepspec, remainder;
+    struct timespec     sleepspec, remainder, now;
     long                rtt;
     char                buffer[BUFFERSIZE] = {'\0'};
     char                remote_time[25] = {'\0'};
@@ -252,17 +251,17 @@ static long getHTTPdate(
     }
 
     /* Initialize timer */
-    gettimeofday(&timeofday, NULL);
+    clock_gettime(CLOCK_REALTIME, &now);
 
     /* Initialize RTT (start of measurement) */
-    rtt = timeofday.tv_sec;
+    rtt = now.tv_sec;
 
     /* Wait till we reach the desired time, "when" */
     sleepspec.tv_sec = 0;
-    if (when >= timeofday.tv_usec) {
-        sleepspec.tv_nsec = (when - timeofday.tv_usec) * 1000;
+    if (when >= now.tv_nsec) {
+        sleepspec.tv_nsec = when - now.tv_nsec;
     } else {
-        sleepspec.tv_nsec = (1000000 + when - timeofday.tv_usec) * 1000;
+        sleepspec.tv_nsec = 1e9 + when - now.tv_nsec;
         rtt++;
     }
     nanosleep(&sleepspec, &remainder);
@@ -288,10 +287,10 @@ static long getHTTPdate(
            ...
         */
 
-        gettimeofday(&timeofday, NULL);
+        clock_gettime(CLOCK_REALTIME, &now);
 
-        /* rtt contains round trip time in micro seconds, now! */
-        rtt = (timeofday.tv_sec - rtt) * 1000000 + timeofday.tv_usec - when;
+        /* rtt contains round trip time in nanoseconds */
+        rtt = (now.tv_sec - rtt) * 1e9 + now.tv_nsec - when;
 
         /* Look for the line that contains [dD]ate: */
         if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
@@ -309,9 +308,9 @@ static long getHTTPdate(
 
             /* Print host, raw timestamp, round trip time */
             if (debug)
-                printlog(0, "%-25s %s, %s (%.3f) => %li", host, port,
+                printlog(0, "%-25s %s, %s (%.0f ms) => %li", host, port,
                     remote_time, rtt * 1e-6,
-                    timevalue.tv_sec - timeofday.tv_sec);
+                    timevalue.tv_sec - now.tv_sec);
 
          } else {
             printlog(1, "%s no timestamp", host);
@@ -322,14 +321,15 @@ static long getHTTPdate(
     close(server_s);
 
     /* Return the time delta between web server time (timevalue)
-       and system time (timeofday)
+       and system time (now)
     */
-    return(timevalue.tv_sec - timeofday.tv_sec);
+    return(timevalue.tv_sec - now.tv_sec);
 }
 
 
 static int setclock(double timedelta, int setmode) {
-    struct timeval    timeofday;
+    struct timespec now;
+    struct timeval  timeofday;
     char   buffer[32] = {'\0'};
 
     if (timedelta == 0) {
@@ -338,46 +338,38 @@ static int setclock(double timedelta, int setmode) {
     }
 
     switch (setmode) {
+        case 0:                        /* No time adjustment, just print time */
+            printlog(0, "Offset %.3f seconds", timedelta);
+            return(0);
+        case 1:                        /* Adjust time smoothly */
+            timeofday.tv_sec  = (long)timedelta;
+            timeofday.tv_usec = (long)((timedelta - timeofday.tv_sec) * 1e6);
 
-    case 0:                        /* No time adjustment, just print time */
-        printlog(0, "Offset %.3f seconds", timedelta);
-        return(0);
+            printlog(0, "Adjusting %.3f seconds", timedelta);
 
-    case 1:                        /* Adjust time smoothly */
-        timeofday.tv_sec  = (long)timedelta;
-        timeofday.tv_usec = (long)((timedelta - timeofday.tv_sec) * 1000000);
+            /* Become root */
+            swuid(0);
+            return(adjtime(&timeofday, NULL));
+        case 2:                        /* Set time */
+            printlog(0, "Setting %.3f seconds", timedelta);
 
-        printlog(0, "Adjusting %.3f seconds", timedelta);
+            clock_gettime(CLOCK_REALTIME, &now);
+            timedelta += (now.tv_sec + now.tv_nsec * 1e-9);
 
-        /* Become root */
-        swuid(0);
-        return(adjtime(&timeofday, NULL));
+            now.tv_sec  = (long)timedelta;
+            now.tv_nsec = (long)(timedelta - now.tv_sec) * 1e9;
 
-    case 2:                        /* Set time */
-        printlog(0, "Setting %.3f seconds", timedelta);
+            strftime(buffer, sizeof(buffer), "%c", localtime(&now.tv_sec));
+            printlog(0, "Set time: %s", buffer);
 
-        gettimeofday(&timeofday, NULL);
-        timedelta += (timeofday.tv_sec + timeofday.tv_usec*1e-6);
-
-        timeofday.tv_sec  = (long)timedelta;
-        timeofday.tv_usec = (long)(timedelta - timeofday.tv_sec) * 1000000;
-
-        strftime(buffer, sizeof(buffer), "%c", localtime(&timeofday.tv_sec));
-        printlog(0, "Set time: %s", buffer);
-
-        /* Become root */
-        swuid(0);
-        return(settimeofday(&timeofday, NULL));
-
-    case 3:                        /* Set frequency, but first an adjust */
-        return(setclock(timedelta, 1));
-
-
-    default:
-        return(-1);
-
+            /* Become root */
+            swuid(0);
+            return(clock_settime(CLOCK_REALTIME, &now));
+        case 3:                        /* Set frequency, but first an adjust */
+            return(setclock(timedelta, 1));
+        default:
+            return(-1);
     }
-
 }
 
 
@@ -403,7 +395,6 @@ static int htpdate_adjtimex(double drift) {
     /* Become root */
     swuid(0);
     return(ntp_adjtime(&tmx));
-
 }
 
 
@@ -515,7 +506,7 @@ int main(int argc, char *argv[]) {
     double          timeavg, drift = 0;
     long            timedelta[MAX_HTTP_HOSTS*MAX_HTTP_HOSTS-1], timestamp;
     long            numservers, validtimes, goodtimes, mean;
-    int             nap = 0, when = 500000, precision = 0;
+    long            nap = 0, when = 5e8, precision = 0;
     int             setmode = 0, burstmode = 0, try, offsetdetect;
     int             i, burst, param;
     int             daemonize = 0, foreground = 0;
@@ -538,7 +529,6 @@ int main(int argc, char *argv[]) {
     /* Parse the command line switches and arguments */
     while ((param = getopt(argc, argv, "046abdhi:lm:np:qstu:vxDFM:P:")) != -1)
     switch(param) {
-
         case '0':               /* HTTP/1.0 */
             httpversion = "0";
             break;
@@ -582,7 +572,7 @@ int main(int argc, char *argv[]) {
                 fputs("Invalid precision\n", stderr);
                 exit(1);
             }
-            precision *= 1000;
+            precision *= 1e6;
             break;
         case 'q':               /* query only (default) */
             break;
@@ -695,12 +685,12 @@ int main(int argc, char *argv[]) {
     */
     if (numservers > 1) {
         if (precision && (numservers > 2))
-            nap = (1000000 - 2 * precision) / (numservers - 1);
+            nap = (1e9 - 2 * precision) / (numservers - 1);
         else
-            nap = 1000000 / (numservers + 1);
+            nap = 1e9 / (numservers + 1);
     } else {
         precision = 0;
-        nap = 500000;
+        nap = 5e8;
     }
 
     /* Infinite poll cycle loop in daemonize or foreground mode */
@@ -804,8 +794,8 @@ int main(int argc, char *argv[]) {
                 /* If a precision was specified and the time offset is small
                    (< +-1 second), adjust the time with the value of precision
                 */
-                if (precision && sumtimes < goodtimes && sumtimes > -goodtimes)
-                    timeavg = (double)precision / 1000000 * sign(sumtimes);
+                if (precision && sumtimes > 0)
+                    timeavg = (double)precision / 1e9 * sign(sumtimes);
 
                 /* Correct the clock, if not in "adjtimex" mode */
                 if (setclock(timeavg, setmode) < 0) printlog(1, "Time change failed");
