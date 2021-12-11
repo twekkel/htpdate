@@ -183,7 +183,7 @@ static long getHTTPdate(
     struct addrinfo     hints, *res;
     struct tm           tm;
     struct timeval      timevalue = {LONG_MAX, 0};
-    struct timespec     sleepspec, remainder, now;
+    struct timespec     sleepspec, now;
     long                rtt;
     char                buffer[BUFFERSIZE] = {'\0'};
     char                url[URLSIZE] = {'\0'};
@@ -270,7 +270,7 @@ static long getHTTPdate(
         sleepspec.tv_nsec = 1e9 + when - now.tv_nsec;
         rtt++;
     }
-    nanosleep(&sleepspec, &remainder);
+    nanosleep(&sleepspec, NULL);
 
     /* Send HEAD request */
     if (send(server_s, buffer, strlen(buffer), 0) < 0)
