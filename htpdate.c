@@ -1,5 +1,5 @@
 /*
-    htpdate v1.2.3
+    htpdate v1.2.4
 
     Eddy Vervest <eddy@vervest.org>
     http://www.vervest.org/htp
@@ -52,7 +52,7 @@
 #include <pwd.h>
 #include <grp.h>
 
-#define VERSION                  "1.2.3"
+#define VERSION                  "1.2.4"
 #define MAX_HTTP_HOSTS           16                /* 16 web servers */
 #define DEFAULT_HTTP_PORT        "80"
 #define DEFAULT_PROXY_PORT       "8080"
@@ -87,10 +87,10 @@ static long epoch(struct tm tm){
 
 /* Insertion sort is more efficient (and smaller) than qsort for small lists */
 static void insertsort(long a[], long length) {
-    long i, j, value;
+    long i, j;
 
     for (i = 1; i < length; i++) {
-        value = a[i];
+        long value = a[i];
         for (j = i - 1; j >= 0 && a[j] > value; j--)
             a[j+1] = a[j];
         a[j+1] = value;
@@ -117,7 +117,7 @@ static void splithostportpath(char **host, char **port, char **path) {
         *path = ps + 1;
     }
 
-    /* A (litteral) IPv6 address with portnumber */
+    /* A (literal) IPv6 address with portnumber */
     if (rb < rc && lb != NULL && rb != NULL) {
         rb[0] = '\0';
         *port = rc + 1;
@@ -125,7 +125,7 @@ static void splithostportpath(char **host, char **port, char **path) {
         return;
     }
 
-    /* A (litteral) IPv6 address without portnumber */
+    /* A (literal) IPv6 address without portnumber */
     if (rb != NULL && lb != NULL) {
         rb[0] = '\0';
         *host = lb + 1;
@@ -186,10 +186,8 @@ static long getHTTPdate(
     struct timespec     sleepspec, remainder, now;
     long                rtt;
     char                buffer[BUFFERSIZE] = {'\0'};
-    char                remote_time[25] = {'\0'};
     char                url[URLSIZE] = {'\0'};
     char                *pdate = NULL;
-
 
     /* Connect to web server via proxy server or directly */
     memset(&hints, 0, sizeof(hints));
@@ -305,6 +303,7 @@ static long getHTTPdate(
             if (debug > 2) {
                 printlog(0, "%s", buffer);
             }
+            char remote_time[25] = {'\0'};
             strncpy(remote_time, pdate + 11, 24);
 
             memset(&tm, 0, sizeof(struct tm));
@@ -510,12 +509,11 @@ int main(int argc, char *argv[]) {
     char            *httpversion = DEFAULT_HTTP_VERSION;
     char            *pidfile = DEFAULT_PID_FILE;
     char            *user = NULL, *userstr = NULL, *group = NULL;
-    long long       sumtimes;
     double          timeavg, drift = 0;
     long            timedelta[MAX_HTTP_HOSTS*MAX_HTTP_HOSTS-1], timestamp;
-    long            numservers, validtimes, goodtimes, mean;
+    long            numservers;
     long            nap = 0, when = 5e8, precision = 0;
-    int             setmode = 0, burstmode = 0, try, offsetdetect;
+    int             setmode = 0, burstmode = 0, try;
     int             i, burst, param;
     int             daemonize = 0, foreground = 0;
     int             noproxyenv = 0;
@@ -707,7 +705,9 @@ int main(int argc, char *argv[]) {
         /* Initialize number of received valid timestamps, good timestamps
            and the average of the good timestamps
         */
-        validtimes = goodtimes = sumtimes = offsetdetect = 0;
+        long long sumtimes = 0;
+        long      validtimes = 0, goodtimes = 0;
+        int       offsetdetect = 0;
         if (precision)
             when = precision;
         else
@@ -776,7 +776,7 @@ int main(int argc, char *argv[]) {
         insertsort(timedelta, validtimes);
 
         /* Mean time value */
-        mean = timedelta[validtimes/2];
+        long mean = timedelta[validtimes/2];
 
         /* Filter out the bogus timevalues. A timedelta which is more than
            1 seconde off from mean, is considered a 'false ticker'.

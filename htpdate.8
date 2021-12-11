@@ -1,19 +1,13 @@
-.TH "HTPDATE" "8" "version 1.2.3" "htpdate"
+.TH "HTPDATE" "8" "version 1.2.4" "htpdate"
 .SH "NAME"
 htpdate \- Time synchronization (daemon)
 .SH "SYNOPSIS"
 .B htpdate
 [\-046abdhlnqstvxDF] [\-i pid file] [\-m minpoll] [\-M maxpoll] [\-p precision] [\-P <proxyserver>[:port]] [\-u user[:group]] <host[:port][/path]> ...
 .SH "DESCRIPTION"
-The HTTP Time Protocol (HTP) is used to synchronize a computer's
-time with web servers as reference time source. Htp will synchronize
-your computer's time to Greenwich Mean Time (GMT) via HTTP headers
-from web servers.
-The htpdate package includes a program for retrieving the date
-and time from remote machines via a network. Htpdate works through
-proxy servers. Accuracy of htpdate will be usually within 0.5 seconds
-(better with multiple servers). If this is not good enough for you,
-try the ntpd package.
+The HTTP Time Protocol (HTP) is used to synchronize a computer's time with web servers as reference time source. Htp will synchronize your computer's time to Greenwich Mean Time (GMT) via HTTP headers from web servers.
+
+The htpdate package includes a program for retrieving the date and time from remote machines via a network. Htpdate works through proxy servers. Accuracy of htpdate will be usually within 0.5 seconds (better with multiple servers). If this is not good enough for you, try the ntpd package.
 .fi
 .SH OPTIONS
 .TP
@@ -135,5 +129,3 @@ Eddy Vervest <eddy@vervest.org>, http://www.vervest.org/htp
 .BR ntpd,
 .BR adjtimex,
 .BR ntp_adjtime,
-.br
-HTP implementation by Roy Keene (http://www.rkeene.org/oss/htp/)

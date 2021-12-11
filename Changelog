@@ -1,5 +1,20 @@
-Changes in 1.2.3
+Changes in 1.2.4
 ----------------
+
+- Several updates/fixes from fork maintained by Angelo Compagnucci
+  - https://github.com/angeloc/htpdate
+- Added forground '-F' (thanks to larsluthman)
+- An incorrect drop privileges fix
+- Support for multiple verbose/debug levels with -dd and -ddd
+- Using http_proxy environment variable
+  - Added '-n' to ignore this environment variable
+- Replaced deprecated asctime(), gettimeofday(), timegm()
+  - Removed the use of mktime()
+- Removed the vim modeline formatting
+
+
+1.2.3
+-----
 
 - Support URL path to be included, hostname/path, e.g. htpdate www.example.com/htpdate.html
 - Included several fixes as used in Chromium OS (thanks to Mike Frysinger)
