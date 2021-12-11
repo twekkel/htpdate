@@ -3,10 +3,10 @@ Changes in 1.2.4
 
 - Several updates/fixes from fork maintained by Angelo Compagnucci
   - https://github.com/angeloc/htpdate
-- Added forground '-F' (thanks to larsluthman)
+- Added foreground '-F' (thanks to larsluthman)
 - An incorrect drop privileges fix
 - Support for multiple verbose/debug levels with -dd and -ddd
-- Using http_proxy environment variable
+- Use http_proxy environment variable
   - Added '-n' to ignore this environment variable
 - Replaced deprecated asctime(), gettimeofday(), timegm()
   - Removed the use of mktime()
