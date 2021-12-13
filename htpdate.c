@@ -60,11 +60,12 @@
 #define DEFAULT_HTTP_VERSION     "1"               /* HTTP/1.1 */
 #define DEFAULT_TIME_LIMIT       31536000          /* 1 year */
 #define ERR_TIMESTAMP            LONG_MAX          /* Err fetching date in getHTTPdate */
+#define DEFAULT_PRECISION        4                 /* 4 request per host */
 #define DEFAULT_MIN_SLEEP        1800              /* 30 minutes */
 #define DEFAULT_MAX_SLEEP        115200            /* 32 hours */
 #define MAX_DRIFT                32768000          /* 500 PPM */
-#define MAX_ATTEMPT              2                 /* Poll attempts */
 #define DEFAULT_PID_FILE         "/var/run/htpdate.pid"
+#define HEADREQUESTSIZE          1024
 #define URLSIZE                  128
 #define BUFFERSIZE               8192
 #define PRINTBUFFERSIZE          BUFFERSIZE
@@ -86,11 +87,11 @@ static long epoch(struct tm tm){
 
 
 /* Insertion sort is more efficient (and smaller) than qsort for small lists */
-static void insertsort(long a[], long length) {
+static void insertsort(double a[], long length) {
     long i, j;
 
     for (i = 1; i < length; i++) {
-        long value = a[i];
+        double value = a[i];
         for (j = i - 1; j >= 0 && a[j] > value; j--)
             a[j+1] = a[j];
         a[j+1] = value;
@@ -173,18 +174,55 @@ static void swgid(int id) {
 }
 
 
-static long getHTTPdate(
+static long getoffset(char remote_time[25]) {
+    struct timeval  timevalue = {LONG_MAX, 0};
+    struct timespec now;
+    struct tm       tm;
+
+    clock_gettime(CLOCK_REALTIME, &now);
+    memset(&tm, 0, sizeof(struct tm));
+    if (strptime(remote_time, "%d %b %Y %T", &tm) != NULL) {
+        timevalue.tv_sec = epoch(tm);
+    } else {
+        printlog(1, "unknown time format");
+    }
+    return now.tv_sec - timevalue.tv_sec;
+}
+
+
+static int sendHEAD (int server_s, char *headrequest, char *buffer)
+{
+    int ret;
+
+    /* Send HEAD request */
+    ret = send(server_s, headrequest, strlen(headrequest), 0);
+
+    if (ret < 0) {
+        printlog( 1, "Error sending" );
+        return INT_MAX;
+    }
+
+    /* Receive data from the web server
+       The return code from recv() is the number of bytes received
+    */
+    ret = recv(server_s, buffer, BUFFERSIZE - 1, 0) != -1;
+
+    return ret;
+}
+
+
+static double getHTTPdate(
     char *host, char *port, char *path,
     char *proxy, char *proxyport,
-    char *httpversion, int ipversion, int when) {
+    char *httpversion, int ipversion, int precision) {
 
     int                 server_s;
     int                 rc;
+    int                 polls = 0;
     struct addrinfo     hints, *res;
-    struct tm           tm;
-    struct timeval      timevalue = {LONG_MAX, 0};
     struct timespec     sleepspec, now;
     long                rtt;
+    char                headrequest[HEADREQUESTSIZE] = {'\0'};
     char                buffer[BUFFERSIZE] = {'\0'};
     char                url[URLSIZE] = {'\0'};
     char                *pdate = NULL;
@@ -223,13 +261,13 @@ static long getHTTPdate(
        Connection: close, allows the server the immediately close the
        connection after sending the response.
     */
-    snprintf(buffer, BUFFERSIZE,
+    snprintf(headrequest, HEADREQUESTSIZE,
         "HEAD %s/%s HTTP/1.%s\r\n"
         "Host: %s\r\n"
         "User-Agent: htpdate/"VERSION"\r\n"
         "Pragma: no-cache\r\n"
         "Cache-Control: no-cache\r\n"
-        "Connection: close\r\n\r\n",
+        "Connection: keep-alive\r\n\r\n",
         url, path, httpversion, host);
 
     /* Loop through the available canonical names */
@@ -256,81 +294,85 @@ static long getHTTPdate(
         return(ERR_TIMESTAMP);
     }
 
-    /* Initialize timer */
-    clock_gettime(CLOCK_REALTIME, &now);
+    long offset  = 0;
+    long first_offset = 0;
+    long prev_offset = 0;
+    long nap = 1e9L;
+    long when = 0;
+    do {
+        if (debug > 1)
+            printlog(0, "bisect: %i, when: %09li", polls, when);
 
-    /* Initialize RTT (start of measurement) */
-    rtt = now.tv_sec;
-
-    /* Wait till we reach the desired time, "when" */
-    sleepspec.tv_sec = 0;
-    if (when >= now.tv_nsec) {
-        sleepspec.tv_nsec = when - now.tv_nsec;
-    } else {
-        sleepspec.tv_nsec = 1e9 + when - now.tv_nsec;
-        rtt++;
-    }
-    nanosleep(&sleepspec, NULL);
-
-    /* Send HEAD request */
-    if (send(server_s, buffer, strlen(buffer), 0) < 0)
-        printlog(1, "Error sending");
-
-    /* Receive data from the web server
-       The return code from recv() is the number of bytes received
-    */
-    if (recv(server_s, buffer, BUFFERSIZE - 1, MSG_WAITALL) != -1) {
-
-        /* Assuming that network delay (server->htpdate) is neglectable,
-           the received web server time "should" match the local time.
-
-           From RFC 2616 paragraph 14.18
-           ...
-           It SHOULD represent the best available approximation
-           of the date and time of message generation, unless the
-           implementation has no means of generating a reasonably
-           accurate date and time.
-           ...
-        */
-
+        /* Initialize timer */
         clock_gettime(CLOCK_REALTIME, &now);
 
-        /* rtt contains round trip time in nanoseconds */
-        rtt = (now.tv_sec - rtt) * 1e9 + now.tv_nsec - when;
+        /* Initialize RTT (start of measurement) */
+        rtt = now.tv_sec;
 
-        /* Look for the line that contains [dD]ate: */
-        if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
-            if (debug > 2) {
-                printlog(0, "%s", buffer);
-            }
-            char remote_time[25] = {'\0'};
-            strncpy(remote_time, pdate + 11, 24);
+        /* Wait till we reach the desired time, "when" */
+        sleepspec.tv_sec = 0;
+        if (when >= now.tv_nsec) {
+            sleepspec.tv_nsec = when - now.tv_nsec;
+        } else {
+            sleepspec.tv_nsec = 1e9 + when - now.tv_nsec;
+            rtt++;
+        }
+        nanosleep(&sleepspec, NULL);
 
-            memset(&tm, 0, sizeof(struct tm));
-            if (strptime(remote_time, "%d %b %Y %T", &tm) != NULL) {
-                timevalue.tv_sec = epoch(tm);
-            } else {
-                printlog(1, "%s unknown time format", host);
-            }
+        /* Send HEAD request */
+        rc = sendHEAD(server_s, headrequest, buffer);
 
-            /* Print host, raw timestamp, round trip time */
-            if (debug)
-                printlog(0, "%-25s %s, %s (%.0f ms) => %li", host, port,
-                    remote_time, rtt * 1e-6,
-                    timevalue.tv_sec - now.tv_sec);
+        if (!rc)
+            printlog(1, "error from %s:%s", host, port );
 
-         } else {
-            printlog(1, "%s no timestamp", host);
-         }
+        if (rc) {
+            clock_gettime(CLOCK_REALTIME, &now);
 
-    }                           /* bytes received */
+            /* rtt contains round trip time in nanoseconds */
+            rtt = (now.tv_sec - rtt) * 1e9 + now.tv_nsec - when;
 
+            /* Look for the line that contains [dD]ate: */
+            if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
+                if (debug > 2) printlog(0, "%s", buffer);
+                char remote_time[25] = {'\0'};
+                strncpy(remote_time, pdate + 11, 24);
+
+                polls++;
+                offset = getoffset(remote_time);
+
+                nap >>= 1;
+                if (polls > 1) {
+                    if (offset != prev_offset) nap = -nap;
+                } else {
+                    first_offset=offset;
+                }
+                prev_offset=offset;
+                /* Print host, raw timestamp, round trip time */
+                if (debug)
+                    printlog(0, "%-25s %s, %s (%li ms) => %li", host, port,
+                    remote_time, rtt / (long)1e6, offset);
+
+             } else {
+                printlog(1, "%s no timestamp", host);
+             }
+             precision--;
+             when += nap;
+        }                           /* bytes received */
+    } while (precision >= 1);
     close(server_s);
+
+    /* Rounding */
+    if (debug) printlog(0, "when: %ld, nap: %ld", when, nap);
+    if (when == abs(nap) || when + abs(nap) == 1e9L) return 0;
 
     /* Return the time delta between web server time (timevalue)
        and system time (now)
     */
-    return(timevalue.tv_sec - now.tv_sec);
+    if (first_offset < 0) {
+        return(-first_offset + (1e9L-when)/(double)1e9L);
+    } else {
+        return(-first_offset + 1 - when/(double)1e9L);
+    }
 }
 
 
@@ -407,14 +449,13 @@ static int htpdate_adjtimex(double drift) {
 
 static void showhelp() {
     puts("htpdate version "VERSION"\n\
-Usage: htpdate [-046abdhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
+Usage: htpdate [-046adhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
          [-p precision] [-P <proxyserver>[:port]] [-u user[:group]]\n\
          <host[:port][/path]> ...\n\n\
   -0    HTTP/1.0 request\n\
   -4    Force IPv4 name resolution only\n\
   -6    Force IPv6 name resolution only\n\
   -a    adjust time smoothly\n\
-  -b    burst mode\n\
   -d    debug mode\n\
   -D    daemon mode\n\
   -F    run daemon in foreground\n\
@@ -424,7 +465,7 @@ Usage: htpdate [-046abdhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
   -m    minimum poll interval\n\
   -M    maximum poll interval\n\
   -n    no proxy (ignore http_proxy environment variable)\n\
-  -p    precision (ms)\n\
+  -p    precision (default 4)\n\
   -P    proxy server\n\
   -q    query only, don't make time changes (default)\n\
   -s    set time\n\
@@ -510,11 +551,11 @@ int main(int argc, char *argv[]) {
     char            *pidfile = DEFAULT_PID_FILE;
     char            *user = NULL, *userstr = NULL, *group = NULL;
     double          timeavg, drift = 0;
-    long            timedelta[MAX_HTTP_HOSTS*MAX_HTTP_HOSTS-1], timestamp;
+    double          timedelta[MAX_HTTP_HOSTS-1];
     long            numservers;
-    long            nap = 0, when = 5e8, precision = 0;
-    int             setmode = 0, burstmode = 0, try;
-    int             i, burst, param;
+    long            precision = DEFAULT_PRECISION;
+    int             setmode = 0;
+    int             i, param;
     int             daemonize = 0, foreground = 0;
     int             noproxyenv = 0;
     int             ipversion = DEFAULT_IP_VERSION;
@@ -533,7 +574,7 @@ int main(int argc, char *argv[]) {
 
 
     /* Parse the command line switches and arguments */
-    while ((param = getopt(argc, argv, "046abdhi:lm:np:qstu:vxDFM:P:")) != -1)
+    while ((param = getopt(argc, argv, "046adhi:lm:np:qstu:vxDFM:P:")) != -1)
     switch(param) {
         case '0':               /* HTTP/1.0 */
             httpversion = "0";
@@ -546,9 +587,6 @@ int main(int argc, char *argv[]) {
             break;
         case 'a':               /* adjust time */
             setmode = 1;
-            break;
-        case 'b':               /* burst mode */
-            burstmode = 1;
             break;
         case 'd':               /* turn debug on */
             if (debug <= 3) debug++;
@@ -574,11 +612,10 @@ int main(int argc, char *argv[]) {
             break;
         case 'p':               /* precision */
             precision = atoi(optarg) ;
-            if ((precision <= 0) || (precision >= 500)) {
+            if ((precision <= 0) || (precision >= 10)) {
                 fputs("Invalid precision\n", stderr);
                 exit(1);
             }
-            precision *= 1e6;
             break;
         case 'q':               /* query only (default) */
             break;
@@ -686,32 +723,14 @@ int main(int argc, char *argv[]) {
     if (sw_gid) swgid(sw_gid);
     if (sw_uid) swuid(sw_uid);
 
-    /* In case we have more than one web server defined, we
-       spread the polls equal within a second and take a "nap" in between
-    */
-    if (numservers > 1) {
-        if (precision && (numservers > 2))
-            nap = (1e9 - 2 * precision) / (numservers - 1);
-        else
-            nap = 1e9 / (numservers + 1);
-    } else {
-        precision = 0;
-        nap = 5e8;
-    }
-
     /* Infinite poll cycle loop in daemonize or foreground mode */
     do {
 
         /* Initialize number of received valid timestamps, good timestamps
            and the average of the good timestamps
         */
-        long long sumtimes = 0;
-        long      validtimes = 0, goodtimes = 0;
-        int       offsetdetect = 0;
-        if (precision)
-            when = precision;
-        else
-            when = nap;
+        long   validtimes = 0, goodtimes = 0;
+        double sumtimes = 0, offset = 0, mean = 0;
 
         /* Loop through the time sources (web servers); poll cycle */
         for (i = optind; i < argc; i++) {
@@ -722,68 +741,33 @@ int main(int argc, char *argv[]) {
             port = DEFAULT_HTTP_PORT;
             splithostportpath(&host, &port, &path);
 
-            /* if burst mode, reset "when" */
-            if (burstmode) {
-                if (precision)
-                    when = precision;
-                else
-                    when = nap;
+            offset = getHTTPdate(host, port, path, proxy, proxyport,
+                httpversion, ipversion, precision);
+            if (debug) printlog(0, "offset: %.6f", offset);
+
+            /* Only include valid responses in timedelta[] */
+            if (offset < timelimit && offset > -timelimit) {
+                timedelta[validtimes] = offset;
+                validtimes++;
             }
 
-            burst = 0;
-            do {
-                /* Retry if first poll shows time offset */
-                try = MAX_ATTEMPT;
-                do {
-                    if (debug > 1) printlog(0, "burst: %d try: %d when: %d",
-                        burst + 1, MAX_ATTEMPT - try + 1, when);
-                    timestamp = getHTTPdate(host, port, path, proxy, proxyport,
-                        httpversion, ipversion, when);
-                    try--;
-                } while (timestamp && try);
-
-                /* Only include valid responses in timedelta[] */
-                if (timestamp < timelimit && timestamp > -timelimit) {
-                    timedelta[validtimes] = timestamp;
-                    validtimes++;
-                }
-
-                /* If we detected a time offset, set the flag */
-                if (timestamp) offsetdetect = 1;
-
-                /* Take a nap, to spread polls equally within a second.
-                   Example:
-                   2 servers => 0.333, 0.666
-                   3 servers => 0.250, 0.500, 0.750
-                   4 servers => 0.200, 0.400, 0.600, 0.800
-                   ...
-                   nap = 1000000 / (#servers + 1)
-
-                   or when "precision" is specified, a different algorithm is used
-                */
-                when += nap;
-
-                burst++;
-            } while (burst < (argc - optind) * burstmode);
-
-            /* Sleep for a while, unless we detected a time offset */
-            if ((daemonize || foreground) && !offsetdetect)
+            /* Sleep for a while, unless a time offset is detected */
+            if ((daemonize || foreground) && !offset)
                 sleep(sleeptime / numservers);
-
         }
 
         /* Sort the timedelta results */
         insertsort(timedelta, validtimes);
 
         /* Mean time value */
-        long mean = timedelta[validtimes/2];
+        mean = timedelta[validtimes/2];
 
         /* Filter out the bogus timevalues. A timedelta which is more than
-           1 seconde off from mean, is considered a 'false ticker'.
+           256 ms off from mean, is considered a 'false ticker'.
            NTP synced web servers can never be more off than a second.
         */
         for (i = 0; i < validtimes; i++) {
-            if (timedelta[i]-mean <= 1 && timedelta[i]-mean >= -1) {
+            if ((timedelta[i]-mean) < 0.256 && (timedelta[i]-mean) > -0.256) {
                 sumtimes += timedelta[i];
                 goodtimes++;
             }
@@ -792,21 +776,15 @@ int main(int argc, char *argv[]) {
         /* Check if we have at least one valid response */
         if (goodtimes) {
 
-            timeavg = sumtimes/(double)goodtimes;
+            timeavg = sumtimes / goodtimes;
 
             if (debug > 1)
-                printlog(0, "#: %d mean: %d average: %.3f", goodtimes, mean, timeavg);
+                printlog(0, "#: %d, mean: %.3f, average: %.3f", goodtimes, mean, timeavg);
 
             /* Do I really need to change the time?  */
             if (sumtimes || !(daemonize || foreground)) {
-                /* If a precision was specified and the time offset is small
-                   (< +-1 second), adjust the time with the value of precision
-                */
-                if (precision && sumtimes > 0)
-                    timeavg = (double)precision / 1e9 * sign(sumtimes);
-
-                /* Correct the clock, if not in "adjtimex" mode */
-                if (setclock(timeavg, setmode) < 0) printlog(1, "Time change failed");
+                if (setclock(timeavg, setmode) < 0)
+                    printlog(1, "Time change failed");
 
                 /* Drop root privileges again */
                 if (sw_uid) swuid(sw_uid);
@@ -842,7 +820,7 @@ int main(int argc, char *argv[]) {
                 if (sleeptime < maxsleep) sleeptime <<= 1;
             }
             if (debug && (daemonize || foreground))
-                printlog(0, "poll %ld s", sleeptime);
+                printlog(0, "polling interval: %ld s", sleeptime);
 
             } else {
                 printlog(1, "No server suitable for synchronization found");

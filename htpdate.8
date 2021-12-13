@@ -45,7 +45,7 @@ These options specify the minimum (\-m) and maximum (\-M) polling intervals for 
 Don't use a proxy, even if the appropriate http_proxy environment variable is defined.
 .TP
 .I \-p
-Precision (in milliseconds) specifies the operating accuracy of htpdate. Internally htpdate uses a different algorithm to detect a time offset, when precision is specified. Precision only has effect in daemon mode. Use with caution.
+Precision specifies the operating accuracy of htpdate. Precision specifies the number of steps (default 4) for htpdate to determine the second boundary. 
 .TP
 .I \-q
 Query web server and display time, but do not change time (default in interactive mode).
