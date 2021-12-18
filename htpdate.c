@@ -763,11 +763,11 @@ int main(int argc, char *argv[]) {
         mean = timedelta[validtimes/2];
 
         /* Filter out the bogus timevalues. A timedelta which is more than
-           256 ms off from mean, is considered a 'false ticker'.
+           1 second off from mean, is considered a 'false ticker'.
            NTP synced web servers can never be more off than a second.
         */
         for (i = 0; i < validtimes; i++) {
-            if ((timedelta[i]-mean) < 0.256 && (timedelta[i]-mean) > -0.256) {
+            if ((timedelta[i]-mean) < 1 && (timedelta[i]-mean) > -1) {
                 sumtimes += timedelta[i];
                 goodtimes++;
             }
@@ -820,7 +820,7 @@ int main(int argc, char *argv[]) {
                 if (sleeptime < maxsleep) sleeptime <<= 1;
             }
             if (debug && (daemonize || foreground))
-                printlog(0, "polling interval: %ld s", sleeptime);
+                printlog(0, "poll: %ld s", sleeptime);
 
             } else {
                 printlog(1, "No server suitable for synchronization found");
