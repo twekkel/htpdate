@@ -58,7 +58,7 @@ from cron. For a daily time synchronization, e.g.
 5 3 * * * /usr/sbin/htpdate -a www.example.com
 ```
 
-Usage: htpdate [-046adhlnqstxD] [-i pid file] [-m minpoll] [-M maxpoll]
+Usage: htpdate [-046acdhlnqstxD] [-i pid file] [-m minpoll] [-M maxpoll]
 	[-p precision] [-P <proxyserver>[:port]] [-u user[:group]]
 	<URL> ...
 
