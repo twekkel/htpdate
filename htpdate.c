@@ -1,5 +1,5 @@
 /*
-    htpdate v1.2.4
+    htpdate v1.3.0
 
     Eddy Vervest <eddy@vervest.org>
     http://www.vervest.org/htp
@@ -52,7 +52,11 @@
 #include <pwd.h>
 #include <grp.h>
 
-#define VERSION                  "1.2.4"
+#ifdef ENABLE_HTTPS
+#include <openssl/ssl.h>
+#endif
+
+#define VERSION                  "1.3.0"
 #define MAX_HTTP_HOSTS           16                /* 16 web servers */
 #define DEFAULT_HTTP_PORT        "80"
 #define DEFAULT_PROXY_PORT       "8080"
@@ -79,7 +83,7 @@ static int logmode = 0;
 
 
 /* timegm() replacement */
-static long epoch(struct tm tm){
+static long epoch(struct tm tm) {
     return(tm.tm_sec + tm.tm_min*60 + tm.tm_hour*3600 + tm.tm_yday*86400 +
         (tm.tm_year-70)*31536000 + ((tm.tm_year-69)/4)*86400 -
         ((tm.tm_year-1)/100)*86400 + ((tm.tm_year+299)/400)*86400);
@@ -99,13 +103,46 @@ static void insertsort(double a[], long length) {
 }
 
 
+/* Printlog is a slighty modified version from the one used in rdate */
+static void printlog(int is_error, char *format, ...) {
+    va_list args;
+    char buf[PRINTBUFFERSIZE];
+
+    va_start(args, format);
+    (void) vsnprintf(buf, sizeof(buf), format, args);
+    va_end(args);
+
+    if (logmode)
+        syslog(is_error?LOG_WARNING:LOG_INFO, "%s", buf);
+    else
+        fprintf(is_error?stderr:stdout, "%s\n", buf);
+}
+
+
 /* Split argument in hostname/IP-address and TCP port
    Supports IPv6 literal addresses, RFC 2732.
 */
-static void splithostportpath(char **host, char **port, char **path) {
+static void splitURL(char **scheme, char **host, char **port, char **path) {
     char *rb, *rc, *lb, *lc, *ps;
 
     *path = "";
+    *scheme = NULL;
+    *port = DEFAULT_HTTP_PORT;
+
+    if ((ps = strcasestr(*host, "https://")) != NULL) {
+        #ifndef ENABLE_HTTPS
+        printlog(1, "HTTPS not supported, %s", *host);
+        return;
+        #endif
+        *scheme = "https://";
+        *port = "443";
+        *host = ps + 8;
+    }
+
+    if ((ps = strcasestr(*host, "http://")) != NULL) {
+        *host = ps + 7;
+    }
+
     lb = strchr(*host, '[');
     rb = strrchr(*host, ']');
     lc = strchr(*host, ':');
@@ -142,22 +179,6 @@ static void splithostportpath(char **host, char **port, char **path) {
 }
 
 
-/* Printlog is a slighty modified version from the one used in rdate */
-static void printlog(int is_error, char *format, ...) {
-    va_list args;
-    char buf[PRINTBUFFERSIZE];
-
-    va_start(args, format);
-    (void) vsnprintf(buf, sizeof(buf), format, args);
-    va_end(args);
-
-    if (logmode)
-        syslog(is_error?LOG_WARNING:LOG_INFO, "%s", buf);
-    else
-        fprintf(is_error?stderr:stdout, "%s\n", buf);
-}
-
-
 static void swuid(int id) {
     if (seteuid(id)) {
         printlog(1, "seteuid() %i", id);
@@ -190,28 +211,65 @@ static long getoffset(char remote_time[25]) {
 }
 
 
-static int sendHEAD (int server_s, char *headrequest, char *buffer)
-{
-    int ret;
-
-    /* Send HEAD request */
-    ret = send(server_s, headrequest, strlen(headrequest), 0);
+static int sendHEAD(int server_s, char *headrequest, char *buffer) {
+    int ret = send(server_s, headrequest, strlen(headrequest), 0);
 
     if (ret < 0) {
-        printlog( 1, "Error sending" );
-        return INT_MAX;
+        printlog(1, "Error sending");
+        return -1;
     }
 
     /* Receive data from the web server
        The return code from recv() is the number of bytes received
     */
-    ret = recv(server_s, buffer, BUFFERSIZE - 1, 0) != -1;
+    ret = recv(server_s, buffer, BUFFERSIZE - 1, 0) > 0;
 
     return ret;
 }
 
 
+#ifdef ENABLE_HTTPS
+static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
+    int ret = SSL_write(conn, headrequest, strlen(headrequest));
+
+    if (ret < 0) {
+        printlog(1, "Error sending");
+        return -1;
+    }
+
+    /* Receive data from the web server
+       The return code is the number of bytes received
+    */
+    ret = SSL_read(conn, buffer, BUFFERSIZE - 1) > 0;
+
+    return ret;
+}
+
+
+static int proxyCONNECT(
+    int server_s,
+    char *host, char *port,
+    char *proxy, char *proxyport,
+    char *httpversion) {
+
+    char buffer[BUFFERSIZE] = {'\0'};
+    char connectrequest[URLSIZE] = {'\0'};
+
+    snprintf(connectrequest, URLSIZE,
+       "CONNECT %s:%s HTTP/1.%s\r\n\r\n", host, port, httpversion);
+
+    send(server_s, connectrequest, strlen(connectrequest), 0);
+    int ret = recv(server_s, buffer, BUFFERSIZE - 1, 0) > 0;
+    if (strstr(buffer, " 200 ") == NULL) {
+        printlog(1, "Proxy error: %s:%s\r\n%s", proxy, proxyport, buffer);
+    }
+    return ret;
+}
+#endif
+
+
 static double getHTTPdate(
+    char *scheme,
     char *host, char *port, char *path,
     char *proxy, char *proxyport,
     char *httpversion, int ipversion, int precision) {
@@ -252,14 +310,13 @@ static double getHTTPdate(
     /* Was the hostname and service resolvable? */
     if (rc) {
         printlog(1, "%s host or service unavailable", host);
-        return(ERR_TIMESTAMP);
+        return(0);                  /* Assume correct time */
     }
 
     /* Build a combined HTTP/1.0 and 1.1 HEAD request
        Pragma: no-cache, "forces" an HTTP/1.0 and 1.1 compliant
        web server to return a fresh timestamp
-       Connection: close, allows the server the immediately close the
-       connection after sending the response.
+       Connection: keep-alive, for multiple requests
     */
     snprintf(headrequest, HEADREQUESTSIZE,
         "HEAD %s/%s HTTP/1.%s\r\n"
@@ -294,6 +351,19 @@ static double getHTTPdate(
         return(ERR_TIMESTAMP);
     }
 
+    #ifdef ENABLE_HTTPS
+    SSL_CTX *tls_ctx = SSL_CTX_new(TLS_method());
+    SSL *conn = SSL_new(tls_ctx);
+    if (scheme) {
+        if (proxy) {
+            rc = proxyCONNECT(server_s, host, port, proxy, proxyport, httpversion);
+        }
+        if (rc != -1) SSL_set_fd(conn, server_s);
+
+        if (SSL_connect(conn) != 1) rc = -1;
+    }
+    #endif
+
     long offset  = 0;
     long first_offset = 0;
     long prev_offset = 0;
@@ -320,7 +390,12 @@ static double getHTTPdate(
         nanosleep(&sleepspec, NULL);
 
         /* Send HEAD request */
-        rc = sendHEAD(server_s, headrequest, buffer);
+        #ifdef ENABLE_HTTPS
+        if (scheme)
+            rc = sendHEADTLS(conn, headrequest, buffer);
+        else
+        #endif
+            rc = sendHEAD(server_s, headrequest, buffer);
 
         if (!rc)
             printlog(1, "error from %s:%s", host, port );
@@ -332,7 +407,9 @@ static double getHTTPdate(
             rtt = (now.tv_sec - rtt) * 1e9 + now.tv_nsec - when;
 
             /* Look for the line that contains [dD]ate: */
-            if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
+            if ((pdate = strcasestr(buffer, "date: ")) != NULL && \
+                strlen(pdate) >= 35) {
+
                 if (debug > 2) printlog(0, "%s", buffer);
                 char remote_time[25] = {'\0'};
                 strncpy(remote_time, pdate + 11, 24);
@@ -360,6 +437,12 @@ static double getHTTPdate(
         }                           /* bytes received */
     } while (precision >= 1);
     close(server_s);
+
+    #ifdef ENABLE_HTTPS
+    if (scheme) SSL_shutdown(conn);
+    SSL_CTX_free(tls_ctx);
+    SSL_free(conn);
+    #endif
 
     /* Rounding */
     if (debug) printlog(0, "when: %ld, nap: %ld", when, nap);
@@ -426,7 +509,7 @@ static int htpdate_adjtimex(double drift) {
     struct timex        tmx;
     long                freq;
 
-    /* Read current kernel frequency */
+    /* Read current clock frequency */
     tmx.modes = 0;
     ntp_adjtime(&tmx);
 
@@ -451,7 +534,7 @@ static void showhelp() {
     puts("htpdate version "VERSION"\n\
 Usage: htpdate [-046adhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
          [-p precision] [-P <proxyserver>[:port]] [-u user[:group]]\n\
-         <host[:port][/path]> ...\n\n\
+         <URL> ...\n\n\
   -0    HTTP/1.0 request\n\
   -4    Force IPv4 name resolution only\n\
   -6    Force IPv6 name resolution only\n\
@@ -465,17 +548,15 @@ Usage: htpdate [-046adhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
   -m    minimum poll interval\n\
   -M    maximum poll interval\n\
   -n    no proxy (ignore http_proxy environment variable)\n\
-  -p    precision (default 4)\n\
+  -p    precision (1..9, default 4)\n\
   -P    proxy server\n\
   -q    query only, don't make time changes (default)\n\
   -s    set time\n\
   -t    turn off sanity time check\n\
   -u    run daemon as user\n\
   -v    version\n\
-  -x    adjust kernel clock\n\
-  host  web server hostname or ip address (maximum of 16)\n\
-  port  port number (default 80 and 8080 for proxy server)\n\
-  path  path to resource\n");
+  -x    adjust system clock frequency\n\
+  URL   one of more URLs (max. 16), e.g. www.example.com\n");
 
     return;
 }
@@ -547,6 +628,7 @@ int main(int argc, char *argv[]) {
     char            *port = NULL;
     char            *hostport = NULL;
     char            *path = NULL;
+    char            *scheme = NULL;
     char            *httpversion = DEFAULT_HTTP_VERSION;
     char            *pidfile = DEFAULT_PID_FILE;
     char            *user = NULL, *userstr = NULL, *group = NULL;
@@ -612,7 +694,7 @@ int main(int argc, char *argv[]) {
             break;
         case 'p':               /* precision */
             precision = atoi(optarg) ;
-            if ((precision <= 0) || (precision >= 10)) {
+            if ((precision < 1) || (precision > 9)) {
                 fputs("Invalid precision\n", stderr);
                 exit(1);
             }
@@ -651,7 +733,7 @@ int main(int argc, char *argv[]) {
         case 'v':               /* print version */
             printf("htpdate version %s\n", VERSION);
             exit(0);
-        case 'x':               /* adjust time and "kernel" */
+        case 'x':               /* adjust time and clock frequency */
             setmode = 3;
             break;
         case 'D':               /* run as daemon */
@@ -670,7 +752,7 @@ int main(int argc, char *argv[]) {
         case 'P':
             proxy = (char *)optarg;
             proxyport = DEFAULT_PROXY_PORT;
-            splithostportpath(&proxy, &proxyport, &path);
+            splitURL(&scheme, &proxy, &proxyport, &path);
             break;
         case '?':
             return 1;
@@ -699,7 +781,7 @@ int main(int argc, char *argv[]) {
         }
         if (debug) printlog(0, "Proxy: %s", proxy);
         proxy += 7;
-        splithostportpath(&proxy, &proxyport, &path);
+        splitURL(&scheme, &proxy, &proxyport, &path);
     }
 
     /* One must be "root" to change the system time */
@@ -723,6 +805,10 @@ int main(int argc, char *argv[]) {
     if (sw_gid) swgid(sw_gid);
     if (sw_uid) swuid(sw_uid);
 
+    #ifdef ENABLE_HTTPS
+    SSL_library_init();
+    #endif
+
     /* Infinite poll cycle loop in daemonize or foreground mode */
     do {
 
@@ -738,10 +824,9 @@ int main(int argc, char *argv[]) {
             /* host:port is stored in argv[i] */
             hostport = (char *)argv[i];
             host = strdup(hostport);
-            port = DEFAULT_HTTP_PORT;
-            splithostportpath(&host, &port, &path);
+            splitURL(&scheme, &host, &port, &path);
 
-            offset = getHTTPdate(host, port, path, proxy, proxyport,
+            offset = getHTTPdate(scheme, host, port, path, proxy, proxyport,
                 httpversion, ipversion, precision);
             if (debug) printlog(0, "offset: %.6f", offset);
 
@@ -798,7 +883,7 @@ int main(int argc, char *argv[]) {
                         /* Adjust system clock */
                         if (setmode == 3) {
                             starttime = time(NULL);
-                            /* Adjust the kernel clock */
+                            /* Adjust the clock frequency */
                             if (htpdate_adjtimex(drift) < 0)
                                 printlog(1, "Frequency change failed");
 
