@@ -1,5 +1,15 @@
-Changes in 1.2.4
+Changes in 1.3.0
 ----------------
+
+- This release is the biggest update in a decade
+  - accuracy has improved with a new algorithm (bisect)
+  - usage of '-p' option has change, '-p 9' allows accuracy in the range of ~10 ms
+  - removed '-b' option, burst mode
+- HTTPS support has been added (no certificate validation!)
+
+
+1.2.4
+-----
 
 - Several updates/fixes from fork maintained by Angelo Compagnucci
   - https://github.com/angeloc/htpdate

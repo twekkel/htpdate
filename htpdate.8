@@ -1,13 +1,13 @@
-.TH "HTPDATE" "8" "version 1.2.4" "htpdate"
+.TH "HTPDATE" "8" "version 1.3.0" "htpdate"
 .SH "NAME"
 htpdate \- Time synchronization (daemon)
 .SH "SYNOPSIS"
 .B htpdate
-[\-046abdhlnqstvxDF] [\-i pid file] [\-m minpoll] [\-M maxpoll] [\-p precision] [\-P <proxyserver>[:port]] [\-u user[:group]] <host[:port][/path]> ...
+[\-046adhlnqstvxDF] [\-i pid file] [\-m minpoll] [\-M maxpoll] [\-p precision] [\-P <proxyserver>[:port]] [\-u user[:group]] <URL> ...
 .SH "DESCRIPTION"
-The HTTP Time Protocol (HTP) is used to synchronize a computer's time with web servers as reference time source. Htp will synchronize your computer's time to Greenwich Mean Time (GMT) via HTTP headers from web servers.
+The HTTP Time Protocol (HTP) is used to synchronize a computer's time with web servers as reference time source. Htp will synchronize your computer's time using the Greenwich Mean Time (GMT) HTTP headers timestamp from web servers. HTTP and HTTPS are both supported.
 
-The htpdate package includes a program for retrieving the date and time from remote machines via a network. Htpdate works through proxy servers. Accuracy of htpdate will be usually within 0.5 seconds (better with multiple servers). If this is not good enough for you, try the ntpd package.
+The htpdate package includes a program for retrieving the date and time from remote machines via a network. Htpdate works through proxy servers. Accuracy of htpdate will be usually within 0.5 seconds (better with multiple servers). If this is not good enough for you, use a ntp package like ntpd, OpenNTPD or chrony.
 .fi
 .SH OPTIONS
 .TP
@@ -22,9 +22,6 @@ Force IPv6 name resolution only.
 .TP
 .I \-a
 Adjust time smoothly (default in daemon mode).
-.TP
-.I \-b
-Burst mode uses multiple polls for each web server to enhance accuracy.
 .TP
 .I \-d
 Turn debug on. Shows the "raw" timestamp, round trip time, time delta and and basic statistics of web server responses. Useful to determining the quality of a specific web server as time source. Multiple -d options increase verbosity. The maximum is 3.
@@ -45,7 +42,7 @@ These options specify the minimum (\-m) and maximum (\-M) polling intervals for 
 Don't use a proxy, even if the appropriate http_proxy environment variable is defined.
 .TP
 .I \-p
-Precision specifies the operating accuracy of htpdate. Precision specifies the number of steps (default 4) for htpdate to determine the second boundary. 
+Precision determines the operating accuracy of htpdate. Precision specifies the number of steps (default 4, maximum of 9) for htpdate to determine the second boundary.
 .TP
 .I \-q
 Query web server and display time, but do not change time (default in interactive mode).
@@ -63,7 +60,7 @@ Set the user and group that the server normally runs at (default is root).
 Show version.
 .TP
 .I \-x
-Let htpdate compensate for the systematisch clock drift.
+Let htpdate compensate for the systematisch clock drift by adjusting system clock frequency.
 .TP
 .I \-D
 Run as daemon. This option requires root privileges.
@@ -75,8 +72,7 @@ Run daemon in foreground. Daemon will not fork or write PID file. This option re
 Proxy server hostname or IP address.
 .TP
 .I host
-Web server hostname or IP address. Up to 16 hosts may be specified, but in
-general 3 to 5 hosts should be enough for a redundant and accurate setup.
+Web server hostname or IP address. Up to 16 hosts may be specified, but in general 3 to 5 hosts should be enough for a redundant and accurate setup.
 .TP
 .I port
 Port number (default 80 and 8080 for proxy server).
@@ -94,25 +90,25 @@ Request time from web server (don't update local clock):
 .br
 \&    htpdate www.example.com
 .P
+Request time from multiple web servers:
+.br
+\&    htpdate www.example.com https://example.com http://example.com:80
+.P
 Debug output (don't update local clock):
 .br
 \&    htpdate \-d www.example.com
 .br
-or for more verbosity
-.br
-\&    htpdate \-dd www.example.com
-.P
 Adjust time smoothly and log output to syslog (eg. cron):
 .br
 \&    htpdate \-al www.example.com:80/htpdate.html
 .P
 HTTP/1.0 request in IPv6 literal format (RFC 2732):
 .br
-\&    htpdate \-0 [2001:DB8:1af6::123]:80
+\&    htpdate \-0 [2001:db8:1af6::123]:80
 .P
 Run htpdate as daemon:
 .br
-\&    htpdate \-D www.example.com
+\&    htpdate \-D https://www.example.com
 .P
 Run htpdate in the foreground with all output going to the terminal:
 .br
@@ -127,5 +123,7 @@ Eddy Vervest <eddy@vervest.org>, http://www.vervest.org/htp
 .BR rdate,
 .BR timed,
 .BR ntpd,
-.BR adjtimex,
+.BR OpenNTPD,
+.BR chrony,
+.BR adjtimex(8),
 .BR ntp_adjtime,

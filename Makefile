@@ -13,6 +13,9 @@ all: htpdate
 htpdate: htpdate.c
 	$(CC) $(CFLAGS) -o htpdate htpdate.c
 
+https: htpdate.c
+	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c -ssl
+
 install: all
 	$(STRIP) htpdate
 	mkdir -p $(bindir)
@@ -23,15 +26,14 @@ install: all
 
 test:
 	./htpdate -v
-	./htpdate www.example.com
-	./htpdate www.example.com www.example.com:80/htpdate.html
-	./htpdate -04q www.example.com/
+	./htpdate -p 1 www.example.com http://www.example.com https://example.com
+	./htpdate -p 1 -d www.example.com www.example.com:80/htpdate.html
+	./htpdate -p 2 -04q www.example.com/
 	./htpdate -6q www.example.com
-	./htpdate -t www.example.com
-	./htpdate 93.184.216.34
-	./htpdate 93.184.216.34:80
-	./htpdate [2606:2800:220:1:248:1893:25c8:1946]
-	./htpdate [2606:2800:220:1:248:1893:25c8:1946]:80
+	./htpdate -t -dd www.example.com
+	./htpdate -p1 https://93.184.216.34 https://93.184.216.34:443
+	./htpdate -p1 93.184.216.34:80
+	./htpdate -p1 [2606:2800:220:1:248:1893:25c8:1946]
 	./htpdate -h
 
 clean:
