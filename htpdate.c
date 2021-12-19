@@ -443,13 +443,12 @@ static double getHTTPdate(
                 if (debug)
                     printlog(0, "%-25s %s, %s (%li ms) => %li", host, port,
                     remote_time, rtt / (long)1e6, offset);
-
-             } else {
+            } else {
                 printlog(1, "%s no timestamp", host);
-             }
-             precision--;
-             when += nap;
+            }
         }                           /* bytes received */
+        precision--;
+        when += nap;
     } while (precision >= 1);
     close(server_s);
 
