@@ -80,6 +80,7 @@
 /* By default turn off "debug" and "log" mode  */
 static int debug   = 0;
 static int logmode = 0;
+static int verifycert = 0;
 
 
 /* timegm() replacement */
@@ -233,7 +234,7 @@ static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
     int ret = SSL_write(conn, headrequest, strlen(headrequest));
 
     if (ret < 0) {
-        printlog(1, "Error sending");
+        printlog(1, "Error sending: %i", ret);
         return -1;
     }
 
@@ -353,14 +354,29 @@ static double getHTTPdate(
 
     #ifdef ENABLE_HTTPS
     SSL_CTX *tls_ctx = SSL_CTX_new(TLS_method());
+    SSL_CTX_set_default_verify_paths(tls_ctx);
+    SSL_CTX_set_verify_depth(tls_ctx, 4);
+    if (verifycert) SSL_CTX_set_verify(tls_ctx, SSL_VERIFY_PEER, NULL);
     SSL *conn = SSL_new(tls_ctx);
     if (scheme) {
         if (proxy) {
             rc = proxyCONNECT(server_s, host, port, proxy, proxyport, httpversion);
+            if (rc != 1) {
+                printlog(1, "Proxy error: %i", rc);
+                rc = -1;
+            }
         }
-        if (rc != -1) SSL_set_fd(conn, server_s);
-
-        if (SSL_connect(conn) != 1) rc = -1;
+        rc = SSL_set_fd(conn, server_s);
+        if (rc != 1) {
+            printlog(1, "SSL error1: %i", rc);
+            rc = -1;
+        } else {
+           rc = SSL_connect(conn);
+           if (rc != 1) {
+               printlog(1, "SSL error2: %i", rc);
+               rc = -1;
+           }
+        }
     }
     #endif
 
@@ -407,8 +423,7 @@ static double getHTTPdate(
             rtt = (now.tv_sec - rtt) * 1e9 + now.tv_nsec - when;
 
             /* Look for the line that contains [dD]ate: */
-            if ((pdate = strcasestr(buffer, "date: ")) != NULL && \
-                strlen(pdate) >= 35) {
+            if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
 
                 if (debug > 2) printlog(0, "%s", buffer);
                 char remote_time[25] = {'\0'};
@@ -532,13 +547,14 @@ static int htpdate_adjtimex(double drift) {
 
 static void showhelp() {
     puts("htpdate version "VERSION"\n\
-Usage: htpdate [-046adhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
+Usage: htpdate [-046acdhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
          [-p precision] [-P <proxyserver>[:port]] [-u user[:group]]\n\
          <URL> ...\n\n\
   -0    HTTP/1.0 request\n\
   -4    Force IPv4 name resolution only\n\
   -6    Force IPv6 name resolution only\n\
   -a    adjust time smoothly\n\
+  -c    verify server certificate\n\
   -d    debug mode\n\
   -D    daemon mode\n\
   -F    run daemon in foreground\n\
@@ -656,7 +672,7 @@ int main(int argc, char *argv[]) {
 
 
     /* Parse the command line switches and arguments */
-    while ((param = getopt(argc, argv, "046adhi:lm:np:qstu:vxDFM:P:")) != -1)
+    while ((param = getopt(argc, argv, "046acdhi:lm:np:qstu:vxDFM:P:")) != -1)
     switch(param) {
         case '0':               /* HTTP/1.0 */
             httpversion = "0";
@@ -669,6 +685,9 @@ int main(int argc, char *argv[]) {
             break;
         case 'a':               /* adjust time */
             setmode = 1;
+            break;
+        case 'c':               /* server certificat verification */
+            verifycert = 1;
             break;
         case 'd':               /* turn debug on */
             if (debug <= 3) debug++;

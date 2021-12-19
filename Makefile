@@ -14,7 +14,7 @@ htpdate: htpdate.c
 	$(CC) $(CFLAGS) -o htpdate htpdate.c
 
 https: htpdate.c
-	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c -ssl
+	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c -lssl
 
 install: all
 	$(STRIP) htpdate
