@@ -280,7 +280,6 @@ static double getHTTPdate(
     int                 polls = 0;
     struct addrinfo     hints, *res;
     struct timespec     sleepspec, now;
-    long                rtt;
     char                headrequest[HEADREQUESTSIZE] = {'\0'};
     char                buffer[BUFFERSIZE] = {'\0'};
     char                url[URLSIZE] = {'\0'};
@@ -349,7 +348,7 @@ static double getHTTPdate(
 
     if (rc) {
         printlog(1, "%s connection failed", host);
-        return(ERR_TIMESTAMP);
+        return((double)ERR_TIMESTAMP);
     }
 
     #ifdef ENABLE_HTTPS
@@ -363,7 +362,6 @@ static double getHTTPdate(
             rc = proxyCONNECT(server_s, host, port, proxy, proxyport, httpversion);
             if (rc != 1) {
                 printlog(1, "Proxy error: %i", rc);
-                rc = -1;
             }
         }
         rc = SSL_set_fd(conn, server_s);
@@ -380,7 +378,7 @@ static double getHTTPdate(
     }
     #endif
 
-    long offset  = 0;
+    long offset;
     long first_offset = 0;
     long prev_offset = 0;
     long nap = 1e9L;
@@ -393,7 +391,7 @@ static double getHTTPdate(
         clock_gettime(CLOCK_REALTIME, &now);
 
         /* Initialize RTT (start of measurement) */
-        rtt = now.tv_sec;
+        long rtt = now.tv_sec;
 
         /* Wait till we reach the desired time, "when" */
         sleepspec.tv_sec = 0;
@@ -460,7 +458,7 @@ static double getHTTPdate(
 
     /* Rounding */
     if (debug) printlog(0, "when: %ld, nap: %ld", when, nap);
-    if (when == abs(nap) || when + abs(nap) == 1e9L) return 0;
+    if (when == labs(nap) || when + labs(nap) == 1e9L) return 0;
 
     /* Return the time delta between web server time (timevalue)
        and system time (now)
@@ -834,7 +832,7 @@ int main(int argc, char *argv[]) {
            and the average of the good timestamps
         */
         long   validtimes = 0, goodtimes = 0;
-        double sumtimes = 0, offset = 0, mean = 0;
+        double sumtimes = 0, mean = 0;
 
         /* Loop through the time sources (web servers); poll cycle */
         for (i = optind; i < argc; i++) {
@@ -844,8 +842,8 @@ int main(int argc, char *argv[]) {
             host = strdup(hostport);
             splitURL(&scheme, &host, &port, &path);
 
-            offset = getHTTPdate(scheme, host, port, path, proxy, proxyport,
-                httpversion, ipversion, precision);
+            double offset = getHTTPdate(scheme, host, port, path,
+                proxy, proxyport, httpversion, ipversion, precision);
             if (debug) printlog(0, "offset: %.6f", offset);
 
             /* Only include valid responses in timedelta[] */
@@ -870,7 +868,7 @@ int main(int argc, char *argv[]) {
            NTP synced web servers can never be more off than a second.
         */
         for (i = 0; i < validtimes; i++) {
-            if ((timedelta[i]-mean) < 1 && (timedelta[i]-mean) > -1) {
+            if ((timedelta[i]-mean) < .5 && (timedelta[i]-mean) > -.5) {
                 sumtimes += timedelta[i];
                 goodtimes++;
             }
@@ -922,7 +920,7 @@ int main(int argc, char *argv[]) {
                 /* Increase polling interval */
                 if (sleeptime < maxsleep) sleeptime <<= 1;
             }
-            if (debug && (daemonize || foreground))
+            if (daemonize || foreground)
                 printlog(0, "poll: %ld s", sleeptime);
 
             } else {

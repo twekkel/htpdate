@@ -52,8 +52,8 @@ Htpdate can run as daemon, e.g.
 ```
 htpdate -D http://www.example.com
 ```
-Another option is to use htpdate in a cronjob and run it periodically
-from cron. For a daily time synchronization, e.g.
+Another option is to run htpdate periodically from cron.
+For a daily time synchronization, e.g.
 ```
 5 3 * * * /usr/sbin/htpdate -a www.example.com
 ```
