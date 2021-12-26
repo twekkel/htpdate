@@ -458,7 +458,7 @@ static double getHTTPdate(
 
     /* Rounding */
     if (debug) printlog(0, "when: %ld, nap: %ld", when, nap);
-    if (when == labs(nap) || when + labs(nap) == 1e9L) return 0;
+    if (when + nap == 1e9L) return 0;
 
     /* Return the time delta between web server time (timevalue)
        and system time (now)
