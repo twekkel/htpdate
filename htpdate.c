@@ -63,6 +63,7 @@
 #define DEFAULT_IP_VERSION       PF_UNSPEC         /* IPv6 and IPv4 */
 #define DEFAULT_HTTP_VERSION     "1"               /* HTTP/1.1 */
 #define DEFAULT_TIME_LIMIT       31536000          /* 1 year */
+#define NO_TIME_LIMIT            -1
 #define ERR_TIMESTAMP            LONG_MAX          /* Err fetching date in getHTTPdate */
 #define DEFAULT_PRECISION        4                 /* 4 request per host */
 #define DEFAULT_MIN_SLEEP        1800              /* 30 minutes */
@@ -721,7 +722,7 @@ int main(int argc, char *argv[]) {
             setmode = 2;
             break;
         case 't':               /* disable "sanity" time check */
-            timelimit = LONG_MAX - 1;
+            timelimit = NO_TIME_LIMIT;
             break;
         case 'u':               /* drop root privileges and run as user */
             user = (char *)optarg;
@@ -847,7 +848,7 @@ int main(int argc, char *argv[]) {
             if (debug) printlog(0, "offset: %.6f", offset);
 
             /* Only include valid responses in timedelta[] */
-            if (offset < timelimit && offset > -timelimit) {
+            if (timelimit == NO_TIME_LIMIT || (offset < timelimit && offset > -timelimit)) {
                 timedelta[validtimes] = offset;
                 validtimes++;
             }
