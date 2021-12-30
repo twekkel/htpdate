@@ -5,8 +5,8 @@ mandir = ${prefix}/share/man
 CC     ?= gcc
 CFLAGS += -Wall -std=c11 -pedantic -O2
 
-INSTALL = install -c
-STRIP   = strip -s
+INSTALL ?= install -c
+STRIP   ?= strip -s
 
 all: htpdate
 
