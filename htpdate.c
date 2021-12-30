@@ -52,6 +52,10 @@
 #include <pwd.h>
 #include <grp.h>
 
+#if defined BSD || defined __FreeBSD__
+#define adjtimex ntp_adjtime
+#endif
+
 #ifdef ENABLE_HTTPS
 #include <openssl/ssl.h>
 #endif
@@ -524,7 +528,7 @@ static int htpdate_adjtimex(double drift) {
 
     /* Read current clock frequency */
     tmx.modes = 0;
-    ntp_adjtime(&tmx);
+    adjtimex(&tmx);
 
     /* Calculate new frequency */
     freq = (long)(65536e6 * drift);
@@ -539,7 +543,7 @@ static int htpdate_adjtimex(double drift) {
 
     /* Become root */
     swuid(0);
-    return(ntp_adjtime(&tmx));
+    return(adjtimex(&tmx));
 }
 
 
