@@ -52,7 +52,7 @@
 #include <pwd.h>
 #include <grp.h>
 
-#if defined BSD || defined __FreeBSD__
+#if defined __NetBSD__ || defined __FreeBSD__
 #define adjtimex ntp_adjtime
 #endif
 
