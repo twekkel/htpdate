@@ -600,9 +600,10 @@ Usage: htpdate [-046acdhlnqstvxD] [-f driftfile] [-i pidfile] [-m minpoll]\n\
   -c    verify server certificate\n\
   -d    debug mode\n\
   -D    daemon mode\n\
+  -f    drift/frequency file\n\
   -F    run daemon in foreground\n\
   -h    help\n\
-  -i    pid file\n\
+  -i    pidfile\n\
   -l    use syslog for output\n\
   -m    minimum poll interval\n\
   -M    maximum poll interval\n\
