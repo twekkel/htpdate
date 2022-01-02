@@ -3,7 +3,7 @@
 htpdate \- Time synchronization (daemon)
 .SH "SYNOPSIS"
 .B htpdate
-[\-046acdhlnqstvxDF] [\-i pid file] [\-m minpoll] [\-M maxpoll] [\-p precision] [\-P <proxyserver>[:port]] [\-u user[:group]] <URL> ...
+[\-046acdhlnqstvxDF] [\-f driftfile] [\-i pidfile] [\-m minpoll] [\-M maxpoll] [\-p precision] [\-P <proxyserver>[:port]] [\-u user[:group]] <URL> ...
 .SH "DESCRIPTION"
 The HTTP Time Protocol (HTP) is used to synchronize a computer's time with web servers as reference time source. Htp will synchronize your computer's time using the Greenwich Mean Time (GMT) HTTP headers timestamp from web servers. HTTP and HTTPS are both supported.
 
@@ -28,6 +28,9 @@ Verify server certificate (default no verification).
 .TP
 .I \-d
 Turn debug on. Shows the "raw" timestamp, round trip time, time delta and and basic statistics of web server responses. Useful to determining the quality of a specific web server as time source. Multiple -d options increase verbosity. The maximum is 3.
+.TP
+.I \-f
+Read/write the systematic drift of the system clock. See also -x.
 .TP
 .I \-h
 Show help.
@@ -116,6 +119,10 @@ Run htpdate as daemon:
 Run htpdate in the foreground with all output going to the terminal:
 .br
 \&    htpdate \-F www.example.com
+.P
+Read clock drift during start of htpdate and update when a new value has been established:
+.br
+\&    htpdate \-Dx -f /etc/htpdate.drift www.example.com
 .P
 Daemon mode for the security minded:
 .br
