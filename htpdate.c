@@ -87,7 +87,6 @@ static int debug   = 0;
 static int logmode = 0;
 static int verifycert = 0;
 
-
 /* timegm() replacement */
 static long epoch(struct tm tm) {
     return(tm.tm_sec + tm.tm_min*60 + tm.tm_hour*3600 + tm.tm_yday*86400 +
@@ -522,9 +521,40 @@ static int setclock(double timedelta, int setmode) {
 }
 
 
-static int htpdate_adjtimex(double drift) {
-    struct timex        tmx;
-    long                freq;
+static int init_frequency(char *driftfile) {
+    struct timex    tmx;
+    FILE            *fp;
+
+    fp = fopen(driftfile, "r");
+    if (fp != NULL) {
+        if (fscanf(fp, "%li", &tmx.freq)) {
+           printlog(0, "Reading frequency from file %li", tmx.freq);
+        } else {
+            printlog(1, "Error reading frequency from %s", driftfile);
+        }
+        fclose(fp);
+	return -1;
+    } else {
+        printlog(1, "Error reading frequency from %s", driftfile);
+	return -1;
+    }
+
+    if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
+        tmx.freq = sign(tmx.freq) * MAX_DRIFT;
+
+    printlog(0, "Set frequency: %li", tmx.freq);
+    tmx.modes = MOD_FREQUENCY;
+
+    /* Become root */
+    swuid(0);
+    return(ntp_adjtime(&tmx));
+}
+
+
+static int htpdate_adjtimex(double drift, char *driftfile) {
+    struct timex    tmx;
+    long            freq;
+    FILE            *fp;
 
     /* Read current clock frequency */
     tmx.modes = 0;
@@ -533,13 +563,24 @@ static int htpdate_adjtimex(double drift) {
     /* Calculate new frequency */
     freq = (long)(65536e6 * drift);
 
-    /* Take the average of current and new drift values */
-    tmx.freq = tmx.freq + (freq >> 1);
+    /* Weighted average of current and new frequency */
+    tmx.freq = tmx.freq + (freq >> 3);
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
         tmx.freq = sign(tmx.freq) * MAX_DRIFT;
 
-    printlog(0, "Adjusting frequency %li", tmx.freq);
+    printlog(0, "Adjusting to new frequency %li", tmx.freq);
     tmx.modes = MOD_FREQUENCY;
+
+    if (driftfile) {
+       fp = fopen(driftfile, "w");
+       if (fp != NULL) {
+           printlog(0, "Update %s", driftfile);
+           fprintf(fp, "%li", tmx.freq);
+           fclose(fp);
+       } else {
+           printlog(1, "Error writing frequency to %s", driftfile);
+       }
+    }
 
     /* Become root */
     swuid(0);
@@ -549,9 +590,9 @@ static int htpdate_adjtimex(double drift) {
 
 static void showhelp() {
     puts("htpdate version "VERSION"\n\
-Usage: htpdate [-046acdhlnqstvxD] [-i pid file] [-m minpoll] [-M maxpoll]\n\
-         [-p precision] [-P <proxyserver>[:port]] [-u user[:group]]\n\
-         <URL> ...\n\n\
+Usage: htpdate [-046acdhlnqstvxD] [-f driftfile] [-i pidfile] [-m minpoll]\n\
+         [-M maxpoll] [-p precision] [-P <proxyserver>[:port]]\n\
+         [-u user[:group]] <URL> ...\n\n\
   -0    HTTP/1.0 request\n\
   -4    Force IPv4 name resolution only\n\
   -6    Force IPv6 name resolution only\n\
@@ -672,9 +713,10 @@ int main(int argc, char *argv[]) {
     extern char     *optarg;
     extern int      optind;
 
+    char            *driftfile = NULL;
 
     /* Parse the command line switches and arguments */
-    while ((param = getopt(argc, argv, "046acdhi:lm:np:qstu:vxDFM:P:")) != -1)
+    while ((param = getopt(argc, argv, "046acdf:hi:lm:np:qstu:vxDFM:P:")) != -1)
     switch(param) {
         case '0':               /* HTTP/1.0 */
             httpversion = "0";
@@ -693,6 +735,10 @@ int main(int argc, char *argv[]) {
             break;
         case 'd':               /* turn debug on */
             if (debug <= 3) debug++;
+            break;
+        case 'f':               /* drift file */
+            driftfile = (char *)optarg;
+            init_frequency(driftfile);
             break;
         case 'h':               /* show help */
             showhelp();
@@ -905,7 +951,7 @@ int main(int argc, char *argv[]) {
                         if (setmode == 3) {
                             starttime = time(NULL);
                             /* Adjust the clock frequency */
-                            if (htpdate_adjtimex(drift) < 0)
+                            if (htpdate_adjtimex(drift, driftfile) < 0)
                                 printlog(1, "Frequency change failed");
 
                             /* Drop root privileges again */
