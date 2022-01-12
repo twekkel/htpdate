@@ -11,3 +11,5 @@ jobs:
         run: make
       - name: build with https
         run: make https
+      - name: test
+        run: ./htpdate www.example.com
