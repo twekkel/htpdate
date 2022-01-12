@@ -9,3 +9,5 @@ jobs:
       - uses: actions/checkout@v2
       - name: build
         run: make
+      - name: build with https
+        run: make https
