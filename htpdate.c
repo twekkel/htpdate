@@ -533,10 +533,10 @@ static int init_frequency(char *driftfile) {
             printlog(1, "Error reading frequency from %s", driftfile);
         }
         fclose(fp);
-	return -1;
+    return -1;
     } else {
         printlog(1, "Error reading frequency from %s", driftfile);
-	return -1;
+    return -1;
     }
 
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
