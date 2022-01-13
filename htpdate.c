@@ -547,7 +547,7 @@ static int init_frequency(char *driftfile) {
 
     /* Become root */
     swuid(0);
-    return(ntp_adjtime(&tmx));
+    return(adjtimex(&tmx));
 }
 
 
