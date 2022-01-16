@@ -1,5 +1,13 @@
-Changes in 1.3.1
+Changes in 1.3.2
 ----------------
+
+- fine tuning time adjustment
+- added missing '-f' from usage
+- fix ntp_adjtime/adjtimex
+
+
+1.3.1
+-----
 
 - Read/write clock driftfile (-f) has been added.
 - Multiple small bug fixes
