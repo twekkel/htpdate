@@ -87,14 +87,6 @@ static int debug   = 0;
 static int logmode = 0;
 static int verifycert = 0;
 
-/* timegm() replacement */
-static long epoch(struct tm tm) {
-    return(tm.tm_sec + tm.tm_min*60 + tm.tm_hour*3600 + tm.tm_yday*86400 +
-        (tm.tm_year-70)*31536000 + ((tm.tm_year-69)/4)*86400 -
-        ((tm.tm_year-1)/100)*86400 + ((tm.tm_year+299)/400)*86400);
-}
-
-
 /* Insertion sort is more efficient (and smaller) than qsort for small lists */
 static void insertsort(double a[], long length) {
     long i, j;
@@ -208,7 +200,7 @@ static long getoffset(char remote_time[25]) {
     clock_gettime(CLOCK_REALTIME, &now);
     memset(&tm, 0, sizeof(struct tm));
     if (strptime(remote_time, "%d %b %Y %T", &tm) != NULL) {
-        timevalue.tv_sec = epoch(tm);
+        timevalue.tv_sec = mktime(&tm);
     } else {
         printlog(1, "unknown time format");
     }
