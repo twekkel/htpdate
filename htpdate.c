@@ -199,7 +199,7 @@ static long getoffset(char remote_time[25]) {
 
     clock_gettime(CLOCK_REALTIME, &now);
     memset(&tm, 0, sizeof(struct tm));
-    if (strptime(remote_time, "%d %b %Y %T", &tm) != NULL) {
+    if (strptime(remote_time, "%d %b %Y %T %Z", &tm) != NULL) {
         timevalue.tv_sec = mktime(&tm);
     } else {
         printlog(1, "unknown time format");
