@@ -382,7 +382,7 @@ static double getHTTPdate(
     }
     #endif
 
-    long offset;
+    long offset = 0;
     long first_offset = 0;
     long prev_offset = 0;
     long nap = 1e9L;
@@ -463,6 +463,7 @@ static double getHTTPdate(
     /* Rounding */
     if (debug) printlog(0, "when: %ld, nap: %ld", when, nap);
     if (when + nap == 1e9L) return 0;
+    if (offset < 0) when -= nap;
 
     /* Return the time delta between web server time (timevalue)
        and system time (now)
@@ -568,7 +569,7 @@ static int htpdate_adjtimex(double drift, char *driftfile) {
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
         tmx.freq = sign(tmx.freq) * MAX_DRIFT;
 
-    printlog(0, "Adjusting to new frequency %li", tmx.freq);
+    printlog(0, "Set frequency %li", tmx.freq);
     tmx.modes = MOD_FREQUENCY;
 
     if (driftfile) {
