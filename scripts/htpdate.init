@@ -11,10 +11,10 @@
 ### END INIT INFO
 
 NAME="htpdate"
-DAEMON="/usr/bin/${NAME}"
+DAEMON="/usr/sbin/${NAME}"
 PIDFILE="/var/run/${NAME}.pid"
 
-HTPDATE_ARGS="-s -t https://www.google.com"
+HTPDATE_ARGS="-s -t https://www.example.com"
 test -r "/etc/default/$NAME" && . "/etc/default/$NAME"
 
 start() {
