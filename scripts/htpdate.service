@@ -5,9 +5,9 @@ After=network-online.target
 
 [Service]
 Type=exec
-Environment=HTPDATE_ARGS="-st www.google.com"
+Environment=HTPDATE_ARGS="-st www.example.com"
 EnvironmentFile=-/etc/default/htpdate
-ExecStart=/usr/bin/htpdate -F $HTPDATE_ARGS
+ExecStart=/usr/sbin/htpdate -F $HTPDATE_ARGS
 
 [Install]
 WantedBy=multi-user.target
