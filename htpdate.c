@@ -379,7 +379,7 @@ static double getHTTPdate(
     long first_offset = 0;
     long prev_offset = 0;
     long nap = 1e9L;
-    long when = 0;
+    long when = nap >> precision;
     do {
         if (debug > 1)
             printlog(0, "bisect: %i, when: %09li", polls, when);
