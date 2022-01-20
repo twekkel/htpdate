@@ -1,5 +1,13 @@
-Changes in 1.3.2
+Changes in 1.3.3
 ----------------
+
+- fix compatibility issue with uClibc
+- fix for time offset > 1s
+- additional time offset fine tuning
+
+
+1.3.2
+-----
 
 - fine tuning time adjustment
 - added missing '-f' from usage
