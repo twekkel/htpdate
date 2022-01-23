@@ -89,7 +89,7 @@ static int verifycert = 0;
 
 
 /* Insertion sort is more efficient (and smaller) than qsort for small lists */
-static void insertsort(double a[], long length) {
+static void insertsort(double a[], int length) {
     long i, j;
 
     for (i = 1; i < length; i++) {
@@ -193,8 +193,8 @@ static void swgid(int id) {
 }
 
 
-static long getoffset(char remote_time[25]) {
-    struct timeval  timevalue = {LONG_MAX, 0};
+static long long getoffset(char remote_time[25]) {
+    struct timeval  timevalue = {0, 0};
     struct timespec now;
     struct tm       tm;
 
@@ -205,6 +205,7 @@ static long getoffset(char remote_time[25]) {
     } else {
         printlog(1, "unknown time format");
     }
+    printf("%li, %li\n", now.tv_sec, timevalue.tv_sec);
     return now.tv_sec - timevalue.tv_sec;
 }
 
@@ -375,9 +376,7 @@ static double getHTTPdate(
     }
     #endif
 
-    long offset = 0;
-    long first_offset = 0;
-    long prev_offset = 0;
+    long long offset = 0, first_offset = 0, prev_offset = 0;
     long nap = 1e9L;
     long when = nap >> precision;
     do {
@@ -680,7 +679,6 @@ static void runasdaemon(char *pidfile) {
 int main(int argc, char *argv[]) {
     char            *host = NULL, *proxy = NULL, *proxyport = NULL;
     char            *port = NULL;
-    char            *hostport = NULL;
     char            *path = NULL;
     char            *scheme = NULL;
     char            *httpversion = DEFAULT_HTTP_VERSION;
@@ -688,14 +686,14 @@ int main(int argc, char *argv[]) {
     char            *user = NULL, *userstr = NULL, *group = NULL;
     double          timeavg, drift = 0;
     double          timedelta[MAX_HTTP_HOSTS-1];
-    long            numservers;
-    long            precision = DEFAULT_PRECISION;
+    int             numservers;
+    int             precision = DEFAULT_PRECISION;
     int             setmode = 0;
     int             i, param;
     int             daemonize = 0, foreground = 0;
     int             noproxyenv = 0;
     int             ipversion = DEFAULT_IP_VERSION;
-    long            timelimit = DEFAULT_TIME_LIMIT;
+    long long       timelimit = DEFAULT_TIME_LIMIT;
     int             minsleep = DEFAULT_MIN_SLEEP;
     int             maxsleep = DEFAULT_MAX_SLEEP;
     int             sleeptime = minsleep;
@@ -877,15 +875,14 @@ int main(int argc, char *argv[]) {
         /* Initialize number of received valid timestamps, good timestamps
            and the average of the good timestamps
         */
-        long   validtimes = 0, goodtimes = 0;
+        int    validtimes = 0, goodtimes = 0;
         double sumtimes = 0, mean = 0;
 
         /* Loop through the time sources (web servers); poll cycle */
         for (i = optind; i < argc; i++) {
 
             /* host:port is stored in argv[i] */
-            hostport = (char *)argv[i];
-            host = strdup(hostport);
+            host = strdup((char *)argv[i]);
             splitURL(&scheme, &host, &port, &path);
 
             double offset = getHTTPdate(scheme, host, port, path,
