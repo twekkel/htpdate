@@ -205,7 +205,6 @@ static long long getoffset(char remote_time[25]) {
     } else {
         printlog(1, "unknown time format");
     }
-    printf("%li, %li\n", now.tv_sec, timevalue.tv_sec);
     return now.tv_sec - timevalue.tv_sec;
 }
 
