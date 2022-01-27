@@ -893,10 +893,6 @@ int main(int argc, char *argv[]) {
                 timedelta[validtimes] = offset;
                 validtimes++;
             }
-
-            /* Sleep for a while, unless a time offset is detected */
-            if ((daemonize || foreground) && !offset)
-                sleep(sleeptime / numservers);
         }
 
         /* Sort the timedelta results */
@@ -962,20 +958,23 @@ int main(int argc, char *argv[]) {
                 /* Increase polling interval */
                 if (sleeptime < maxsleep) sleeptime <<= 1;
             }
-            if (daemonize || foreground)
-                printlog(0, "poll: %ld s", sleeptime);
 
-            } else {
-                printlog(1, "No server suitable for synchronization found");
-                /* Sleep for minsleep to avoid flooding */
-                if (daemonize || foreground)
-                    sleep(minsleep);
-                else
-                    exit(1);
+            if (daemonize || foreground) {
+                printlog(0, "sleep for %ld s", sleeptime);
+                sleep(sleeptime);
             }
 
-            /* After first poll cycle do not step through time, only adjust */
-            if (setmode != 3) setmode = 1;
+        } else {
+            printlog(1, "No server suitable for synchronization found");
+            /* Sleep for minsleep to avoid flooding */
+            if (daemonize || foreground)
+                sleep(minsleep);
+            else
+                exit(1);
+        }
+
+        /* After first poll cycle do not step through time, only adjust */
+        if (setmode != 3) setmode = 1;
 
     } while (daemonize || foreground);         /* end of infinite while loop */
 
