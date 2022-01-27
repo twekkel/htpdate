@@ -51,6 +51,7 @@
 #include <limits.h>
 #include <pwd.h>
 #include <grp.h>
+#include <float.h>
 
 #if defined __NetBSD__ || defined __FreeBSD__ || defined __APPLE__
 #define adjtimex ntp_adjtime
@@ -68,7 +69,7 @@
 #define DEFAULT_HTTP_VERSION     "1"               /* HTTP/1.1 */
 #define DEFAULT_TIME_LIMIT       31536000          /* 1 year */
 #define NO_TIME_LIMIT            -1
-#define ERR_TIMESTAMP            LONG_MAX          /* Err fetching date in getHTTPdate */
+#define ERR_TIMESTAMP            DBL_MAX          /* Err fetching date in getHTTPdate */
 #define DEFAULT_PRECISION        4                 /* 4 request per host */
 #define DEFAULT_MIN_SLEEP        1800              /* 30 minutes */
 #define DEFAULT_MAX_SLEEP        115200            /* 32 hours */
@@ -345,7 +346,7 @@ static double getHTTPdate(
 
     if (rc) {
         printlog(1, "%s connection failed", host);
-        return((double)ERR_TIMESTAMP);
+        return(ERR_TIMESTAMP);
     }
 
     #ifdef ENABLE_HTTPS
@@ -359,17 +360,16 @@ static double getHTTPdate(
             rc = proxyCONNECT(server_s, host, port, proxy, proxyport, httpversion);
             if (rc != 1) {
                 printlog(1, "Proxy error: %i", rc);
+                return(ERR_TIMESTAMP);
             }
         }
-        rc = SSL_set_fd(conn, server_s);
-        if (rc != 1) {
-            printlog(1, "SSL error1: %i", rc);
-            rc = -1;
+        if (! SSL_set_fd(conn, server_s)) {
+            printlog(1, "TLS error1");
+            return(ERR_TIMESTAMP);
         } else {
-           rc = SSL_connect(conn);
-           if (rc != 1) {
-               printlog(1, "SSL error2: %i", rc);
-               rc = -1;
+           if (SSL_connect(conn) != 1) {
+               printlog(1, "TLS error2");
+               return(ERR_TIMESTAMP);
            }
         }
     }
@@ -438,6 +438,7 @@ static double getHTTPdate(
                     remote_time, rtt / (long)1e6, offset);
             } else {
                 printlog(1, "%s no timestamp", host);
+                return(ERR_TIMESTAMP);
             }
         }                           /* bytes received */
         precision--;
@@ -886,7 +887,14 @@ int main(int argc, char *argv[]) {
 
             double offset = getHTTPdate(scheme, host, port, path,
                 proxy, proxyport, httpversion, ipversion, precision);
-            if (debug) printlog(0, "offset: %.6f", offset);
+            if (host) free(host);
+            if (debug) {
+                if (offset == ERR_TIMESTAMP) {
+                    printlog(0, "offset: -");
+                } else {
+                    printlog(0, "offset: %.6f", offset);
+                }
+            }
 
             /* Only include valid responses in timedelta[] */
             if (timelimit == NO_TIME_LIMIT || (offset < timelimit && offset > -timelimit)) {
