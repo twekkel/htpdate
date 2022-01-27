@@ -882,12 +882,13 @@ int main(int argc, char *argv[]) {
         for (i = optind; i < argc; i++) {
 
             /* host:port is stored in argv[i] */
-            host = strdup((char *)argv[i]);
+            char *hostport = strdup(argv[i]);
+            host = hostport;
             splitURL(&scheme, &host, &port, &path);
 
             double offset = getHTTPdate(scheme, host, port, path,
                 proxy, proxyport, httpversion, ipversion, precision);
-            if (host) free(host);
+            free(hostport);
             if (debug) {
                 if (offset == ERR_TIMESTAMP) {
                     printlog(0, "offset: -");
