@@ -308,7 +308,8 @@ static double getHTTPdate(
     /* Was the hostname and service resolvable? */
     if (rc) {
         printlog(1, "%s host or service unavailable", host);
-        return(0);                  /* Assume correct time */
+        freeaddrinfo(res);
+        return(ERR_TIMESTAMP);
     }
 
     /* Build a combined HTTP/1.0 and 1.1 HEAD request
@@ -889,16 +890,12 @@ int main(int argc, char *argv[]) {
             double offset = getHTTPdate(scheme, host, port, path,
                 proxy, proxyport, httpversion, ipversion, precision);
             free(hostport);
-            if (debug) {
-                if (offset == ERR_TIMESTAMP) {
-                    printlog(0, "offset: -");
-                } else {
-                    printlog(0, "offset: %.6f", offset);
-                }
+            if (debug && offset != ERR_TIMESTAMP) {
+                printlog(0, "offset: %.6f", offset);
             }
 
             /* Only include valid responses in timedelta[] */
-            if (timelimit == NO_TIME_LIMIT || (offset < timelimit && offset > -timelimit)) {
+            if ((timelimit == NO_TIME_LIMIT && offset != ERR_TIMESTAMP) || (offset < timelimit && offset > -timelimit)) {
                 timedelta[validtimes] = offset;
                 validtimes++;
             }
