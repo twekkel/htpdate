@@ -16,6 +16,9 @@ htpdate: htpdate.c
 https: htpdate.c
 	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c -lssl
 
+https-use-pkg-config: htpdate.c
+	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c $(shell pkg-config --libs libssl)
+
 install: all
 	$(STRIP) htpdate
 	mkdir -p $(bindir)
