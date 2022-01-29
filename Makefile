@@ -2,8 +2,9 @@ prefix = $(DESTDIR)/usr
 bindir = ${prefix}/sbin
 mandir = ${prefix}/share/man
 
-CC     ?= gcc
-CFLAGS += -Wall -std=c11 -pedantic -O2
+CC       ?= gcc
+CFLAGS   += -Wall -std=c11 -pedantic -O2
+SSL_LIBS ?= -lssl
 
 INSTALL ?= install -c
 STRIP   ?= strip -s
@@ -14,7 +15,7 @@ htpdate: htpdate.c
 	$(CC) $(CFLAGS) -o htpdate htpdate.c
 
 https: htpdate.c
-	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c -lssl
+	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c $(SSL_LIBS)
 
 install: all
 	$(STRIP) htpdate
