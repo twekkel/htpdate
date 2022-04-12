@@ -308,7 +308,6 @@ static double getHTTPdate(
     /* Was the hostname and service resolvable? */
     if (rc) {
         printlog(1, "%s host or service unavailable", host);
-        freeaddrinfo(res);
         return(ERR_TIMESTAMP);
     }
 
