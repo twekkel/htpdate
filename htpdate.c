@@ -520,15 +520,16 @@ static int init_frequency(char *driftfile) {
     fp = fopen(driftfile, "r");
     if (fp != NULL) {
         if (fscanf(fp, "%li", &tmx.freq)) {
-           printlog(0, "Reading frequency from file %li", tmx.freq);
+            printlog(0, "Reading frequency from file %li", tmx.freq);
+            fclose(fp);
         } else {
             printlog(1, "Error reading frequency from %s", driftfile);
+            fclose(fp);
+            return -1;
         }
-        fclose(fp);
-    return -1;
     } else {
         printlog(1, "Error reading frequency from %s", driftfile);
-    return -1;
+        return -1;
     }
 
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
