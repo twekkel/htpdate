@@ -467,6 +467,17 @@ static double getHTTPdate(
 }
 
 
+static int setstatus(int precision) {
+    struct timex txc = {0};
+
+    txc.modes = MOD_STATUS | (1000000 >> precision) | MOD_MAXERROR;
+    txc.status &= ~STA_UNSYNC;
+    printlog(0, "Set clock synchronized");
+
+    return(adjtimex(&txc));
+}
+
+
 static int setclock(double timedelta, int setmode) {
     struct timespec now;
     struct timeval  timeofday;
@@ -795,6 +806,8 @@ int main(int argc, char *argv[]) {
             exit(0);
         case 'x':               /* adjust time and clock frequency */
             setmode = 3;
+	    if (maxsleep > 14400) maxsleep = 14400;
+	    if (precision < 7) precision = 7;
             break;
         case 'D':               /* run as daemon */
             daemonize = 1;
@@ -966,6 +979,7 @@ int main(int argc, char *argv[]) {
 
             if (daemonize || foreground) {
                 printlog(0, "sleep for %ld s", sleeptime);
+		if (setmode == 3) setstatus(precision);
                 sleep(sleeptime);
             }
 
