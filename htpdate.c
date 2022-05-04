@@ -406,10 +406,11 @@ static double getHTTPdate(
         #endif
             rc = sendHEAD(server_s, headrequest, buffer);
 
-        if (!rc)
+        if (!rc) {
             printlog(1, "error from %s:%s", host, port );
-
-        if (rc) {
+            offset = LLONG_MAX;
+            break;
+        } else {
             clock_gettime(CLOCK_REALTIME, &now);
 
             /* rtt contains round trip time in nanoseconds */
@@ -438,7 +439,8 @@ static double getHTTPdate(
                     remote_time, rtt / (long)1e6, offset);
             } else {
                 printlog(1, "%s no timestamp", host);
-                return(ERR_TIMESTAMP);
+                offset = LLONG_MAX;
+                break;
             }
         }                           /* bytes received */
         precision--;
@@ -454,6 +456,7 @@ static double getHTTPdate(
 
     /* Rounding */
     if (debug) printlog(0, "when: %ld, nap: %ld", when, nap);
+    if (offset == LLONG_MAX) return(ERR_TIMESTAMP);
     if (when + nap == 1e9 && offset == 0) return 0;
 
     /* Return the time delta between web server time (timevalue)
@@ -975,11 +978,11 @@ int main(int argc, char *argv[]) {
             } else {
                 /* Increase polling interval */
                 if (sleeptime < maxsleep) sleeptime <<= 1;
+		if (setmode == 3) setstatus(precision);
             }
 
             if (daemonize || foreground) {
                 printlog(0, "sleep for %ld s", sleeptime);
-		if (setmode == 3) setstatus(precision);
                 sleep(sleeptime);
             }
 
