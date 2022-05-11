@@ -558,7 +558,7 @@ static int init_frequency(char *driftfile) {
 }
 
 
-static int htpdate_adjtimex(double drift, char *driftfile) {
+static int htpdate_adjtimex(double drift, char *driftfile, int convidence) {
     struct timex    tmx;
     long            freq;
     FILE            *fp;
@@ -571,7 +571,7 @@ static int htpdate_adjtimex(double drift, char *driftfile) {
     freq = (long)(65536e6 * drift);
 
     /* Weighted average of current and new frequency */
-    tmx.freq = tmx.freq + (freq >> 3);
+    tmx.freq = (tmx.freq * 2 + freq * convidence) / (2 + convidence);
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
         tmx.freq = sign(tmx.freq) * MAX_DRIFT;
 
@@ -959,7 +959,7 @@ int main(int argc, char *argv[]) {
                         if (setmode == 3) {
                             starttime = time(NULL);
                             /* Adjust the clock frequency */
-                            if (htpdate_adjtimex(drift, driftfile) < 0)
+                            if (htpdate_adjtimex(drift, driftfile, sleeptime/minsleep) < 0)
                                 printlog(1, "Frequency change failed");
 
                             /* Drop root privileges again */
