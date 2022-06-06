@@ -558,7 +558,7 @@ static int init_frequency(char *driftfile) {
 }
 
 
-static int htpdate_adjtimex(double drift, char *driftfile, float convidence) {
+static int htpdate_adjtimex(double drift, char *driftfile, float confidence) {
     struct timex    tmx;
     long            freq;
     FILE            *fp;
@@ -571,7 +571,7 @@ static int htpdate_adjtimex(double drift, char *driftfile, float convidence) {
     freq = (long)(65536e6 * drift);
 
     /* Weighted average of current and new frequency */
-    tmx.freq = tmx.freq + freq * convidence;
+    tmx.freq = tmx.freq + freq * confidence;
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
         tmx.freq = sign(tmx.freq) * MAX_DRIFT;
 
