@@ -12,10 +12,10 @@ STRIP   ?= strip -s
 all: htpdate
 
 htpdate: htpdate.c
-	$(CC) $(CFLAGS) -o htpdate htpdate.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o htpdate htpdate.c
 
 https: htpdate.c
-	$(CC) $(CFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c $(SSL_LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c $(SSL_LIBS)
 
 install: all
 	$(STRIP) htpdate
