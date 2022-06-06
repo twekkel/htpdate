@@ -558,7 +558,7 @@ static int init_frequency(char *driftfile) {
 }
 
 
-static int htpdate_adjtimex(double drift, char *driftfile, int convidence) {
+static int htpdate_adjtimex(double drift, char *driftfile, float convidence) {
     struct timex    tmx;
     long            freq;
     FILE            *fp;
@@ -571,7 +571,7 @@ static int htpdate_adjtimex(double drift, char *driftfile, int convidence) {
     freq = (long)(65536e6 * drift);
 
     /* Weighted average of current and new frequency */
-    tmx.freq = (tmx.freq * 2 + freq * convidence) / (2 + convidence);
+    tmx.freq = tmx.freq + freq * convidence;
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
         tmx.freq = sign(tmx.freq) * MAX_DRIFT;
 
@@ -952,14 +952,14 @@ int main(int argc, char *argv[]) {
                 if (daemonize || foreground) {
                     if (starttime) {
                         /* Calculate systematic clock drift */
-                        drift = timeavg / (time(NULL) - starttime);
+                        drift = timeavg / (time(NULL) - starttime) / 2;
                         printlog(0, "Drift %.2f PPM, %.2f s/day", drift*1e6, drift*86400);
 
                         /* Adjust system clock */
                         if (setmode == 3) {
                             starttime = time(NULL);
                             /* Adjust the clock frequency */
-                            if (htpdate_adjtimex(drift, driftfile, sleeptime/minsleep) < 0)
+                            if (htpdate_adjtimex(drift, driftfile, (float)sleeptime / (float)maxsleep) < 0)
                                 printlog(1, "Frequency change failed");
 
                             /* Drop root privileges again */
