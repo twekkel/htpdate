@@ -597,7 +597,7 @@ static int htpdate_adjtimex(double drift, char *driftfile, int convidence) {
 
 static void showhelp() {
     puts("htpdate version "VERSION"\n\
-Usage: htpdate [-046acdhlnqstvxD] [-f driftfile] [-i pidfile] [-m minpoll]\n\
+Usage: htpdate [-046acdhlnqstvxDF] [-f driftfile] [-i pidfile] [-m minpoll]\n\
          [-M maxpoll] [-p precision] [-P <proxyserver>[:port]]\n\
          [-u user[:group]] <URL> ...\n\n\
   -0    HTTP/1.0 request\n\

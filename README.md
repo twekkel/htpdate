@@ -2,7 +2,7 @@
 
 [![main](https://github.com/twekkel/htpdate/actions/workflows/main.yml/badge.svg)](https://github.com/twekkel/htpdate/actions/workflows/main.yml)
 
-### Short
+### Time synchronization... quick and dirty
 
 ```
 date -s "`curl --head -s https://example.com | grep -i "Date: " | cut -d' ' -f2-`"
@@ -63,7 +63,7 @@ For a daily time synchronization,
 All htpdate options,
 
 ```
-Usage: htpdate [-046acdhlnqstvxD] [-f driftfile] [-i pidfile] [-m minpoll]
+Usage: htpdate [-046acdhlnqstvxDF] [-f driftfile] [-i pidfile] [-m minpoll]
          [-M maxpoll] [-p precision] [-P <proxyserver>[:port]]
          [-u user[:group]] <URL> ...
 ```
@@ -73,6 +73,7 @@ See manpage for more details.
 ### See also
 
 * https://www.vervest.org/htp, home of HTTP Time Protocol
+* https://www.ntppool.org/scores/ntp6.vervest.org, htpdate as part of NTP pool
 * https://github.com/twekkel/httpdate, non daemon version using libcurl
 * https://github.com/angeloc/htpdate, forked from htpdate 1.2.2
 * http://www.rkeene.org/oss/htp/
