@@ -8,7 +8,7 @@
 date -s "`curl --head -s https://example.com | grep -i "Date: " | cut -d' ' -f2-`"
 ```
 
-### Solution... htpdate
+### Better solution... htpdate
 
 The above one-liner might result in unexpected behavior,
 * site is not reachable
