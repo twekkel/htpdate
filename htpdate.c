@@ -936,7 +936,7 @@ int main(int argc, char *argv[]) {
         /* Check if we have at least one valid response */
         if (goodtimes) {
 
-            timeavg = sumtimes / goodtimes;
+            timeavg = sumtimes / goodtimes / 2;
 
             if (debug > 1)
                 printlog(0, "#: %d, mean: %.3f, average: %.3f", goodtimes, mean, timeavg);
@@ -952,7 +952,7 @@ int main(int argc, char *argv[]) {
                 if (daemonize || foreground) {
                     if (starttime) {
                         /* Calculate systematic clock drift */
-                        drift = timeavg / (time(NULL) - starttime) / 2;
+                        drift = timeavg / (time(NULL) - starttime);
                         printlog(0, "Drift %.2f PPM, %.2f s/day", drift*1e6, drift*86400);
 
                         /* Adjust system clock */
