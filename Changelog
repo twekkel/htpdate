@@ -1,5 +1,13 @@
-Changes in 1.3.4
+Changes in 1.3.5
 ----------------
+
+- Feature: set kernel synchronized (e.g. timedatesync will report 
+  'System clock synchronized: yes')
+- Improved time tuning accuracy/stability
+
+
+1.3.4
+-----
 
 - fix small memory leak in strdup
 - fix free in case of DNS lookup failure
