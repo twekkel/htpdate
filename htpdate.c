@@ -809,8 +809,8 @@ int main(int argc, char *argv[]) {
             exit(0);
         case 'x':               /* adjust time and clock frequency */
             setmode = 3;
-	    if (maxsleep > 14400) maxsleep = 14400;
-	    if (precision < 7) precision = 7;
+            if (maxsleep > 14400) maxsleep = 14400;
+            if (precision < 7) precision = 7;
             break;
         case 'D':               /* run as daemon */
             daemonize = 1;
@@ -978,7 +978,7 @@ int main(int argc, char *argv[]) {
             } else {
                 /* Increase polling interval */
                 if (sleeptime < maxsleep) sleeptime <<= 1;
-		if (setmode == 3) setstatus(precision);
+                if (setmode == 3) setstatus(precision);
             }
 
             if (daemonize || foreground) {
