@@ -986,6 +986,9 @@ int main(int argc, char *argv[]) {
                 sleep(sleeptime);
             }
 
+            /* After first successful poll cycle do not step through time, only adjust */
+            if (setmode != 3) setmode = 1;
+
         } else {
             printlog(1, "No server suitable for synchronization found");
             /* Sleep for minsleep to avoid flooding */
@@ -994,9 +997,6 @@ int main(int argc, char *argv[]) {
             else
                 exit(1);
         }
-
-        /* After first poll cycle do not step through time, only adjust */
-        if (setmode != 3) setmode = 1;
 
     } while (daemonize || foreground);         /* end of infinite while loop */
 
