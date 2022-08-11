@@ -1,5 +1,11 @@
-Changes in 1.3.5
+Changes in 1.3.6
 ----------------
+
+- Fix when correcting large time offsets (bug introduced in 1.3.5)
+
+
+1.3.5
+-----
 
 - Feature: set kernel synchronized (e.g. timedatectl will report 
   'System clock synchronized: yes')
