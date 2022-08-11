@@ -936,7 +936,7 @@ int main(int argc, char *argv[]) {
         /* Check if we have at least one valid response */
         if (goodtimes) {
 
-            timeavg = sumtimes / goodtimes / 2;
+            timeavg = sumtimes / goodtimes;
 
             if (debug > 1)
                 printlog(0, "#: %d, mean: %.3f, average: %.3f", goodtimes, mean, timeavg);
