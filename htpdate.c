@@ -938,6 +938,9 @@ int main(int argc, char *argv[]) {
 
             timeavg = sumtimes / goodtimes;
 
+            /* Avoid bouncing between upper/lower limit when (almost) in sync */
+            if (timeavg < 1 && timeavg > -1) timeavg /= 2;
+
             if (debug > 1)
                 printlog(0, "#: %d, mean: %.3f, average: %.3f", goodtimes, mean, timeavg);
 
