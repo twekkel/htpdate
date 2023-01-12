@@ -858,7 +858,7 @@ int main(int argc, char *argv[]) {
         }
         if (debug) printlog(0, "Proxy: %s", proxy);
         proxy += 7;
-        port = DEFAULT_HTTP_PORT;
+        proxyport = DEFAULT_PROXY_PORT;
         splitURL(&scheme, &proxy, &proxyport, &path);
     }
 
