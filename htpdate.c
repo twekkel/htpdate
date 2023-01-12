@@ -126,7 +126,6 @@ static void splitURL(char **scheme, char **host, char **port, char **path) {
 
     *path = "";
     *scheme = NULL;
-    *port = DEFAULT_HTTP_PORT;
 
     if ((ps = strcasestr(*host, "https://")) != NULL) {
         #ifndef ENABLE_HTTPS
@@ -859,6 +858,7 @@ int main(int argc, char *argv[]) {
         }
         if (debug) printlog(0, "Proxy: %s", proxy);
         proxy += 7;
+        port = DEFAULT_HTTP_PORT;
         splitURL(&scheme, &proxy, &proxyport, &path);
     }
 
@@ -902,6 +902,7 @@ int main(int argc, char *argv[]) {
             /* host:port is stored in argv[i] */
             char *hostport = strdup(argv[i]);
             host = hostport;
+            port = DEFAULT_HTTP_PORT;
             splitURL(&scheme, &host, &port, &path);
 
             double offset = getHTTPdate(scheme, host, port, path,
