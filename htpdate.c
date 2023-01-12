@@ -827,8 +827,9 @@ int main(int argc, char *argv[]) {
             }
             break;
         case 'P':
-            proxy = (char *)optarg;
             proxyport = DEFAULT_PROXY_PORT;
+            char *proxywithport = strdup((char *)optarg);
+            proxy = proxywithport;
             splitURL(&scheme, &proxy, &proxyport, &path);
             break;
         case '?':
