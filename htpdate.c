@@ -1,5 +1,5 @@
 /*
-    htpdate v1.3.6
+    htpdate v1.3.7
 
     Eddy Vervest <eddy@vervest.org>
     http://www.vervest.org/htp
@@ -61,7 +61,7 @@
 #include <openssl/ssl.h>
 #endif
 
-#define VERSION                  "1.3.6"
+#define VERSION                  "1.3.7"
 #define MAX_HTTP_HOSTS           16                /* 16 web servers */
 #define DEFAULT_HTTP_PORT        "80"
 #define DEFAULT_PROXY_PORT       "8080"
