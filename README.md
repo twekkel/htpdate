@@ -48,11 +48,11 @@ make install
 ### Packages
 
 Many Linux distributions and FreeBSD system provide a htpdate package, which should be preferred over manual compilation and installation from downloaded source code as the packages are likely integrated with the rest of the system (e.g. service files and networking scripts).
-* [Arch Linux][https://aur.archlinux.org/packages/htpdate]
-* [Debian][https://tracker.debian.org/pkg/htpdate]
-* [Gentoo][https://packages.gentoo.org/packages/net-misc/htpdate]
-* [Ubuntu][https://packages.ubuntu.com/search?suite=all&arch=any&searchon=names&keywords=htpdate]
-* [FreeBSD][https://www.freshports.org/net/htpdate/]
+* [Arch Linux](https://aur.archlinux.org/packages/htpdate)
+* [Debian](https://tracker.debian.org/pkg/htpdate)
+* [Gentoo](https://packages.gentoo.org/packages/net-misc/htpdate)
+* [Ubuntu](https://packages.ubuntu.com/search?suite=all&arch=any&searchon=names&keywords=htpdate)
+* [FreeBSD](https://www.freshports.org/net/htpdate/)
 
 ### Usage
 
