@@ -45,9 +45,18 @@ install:
 make install
 ```
 
+### Packages
+
+Many Linux distributions and FreeBSD system provide a htpdate package, which should be preferred over manual compilation and installation from downloaded source code as the packages are likely integrated with the rest of the system (e.g. service files and networking scripts).
+* [Arch Linux][https://aur.archlinux.org/packages/htpdate]
+* [Debian][https://tracker.debian.org/pkg/htpdate]
+* [Gentoo][https://packages.gentoo.org/packages/net-misc/htpdate]
+* [Ubuntu][https://packages.ubuntu.com/search?suite=all&arch=any&searchon=names&keywords=htpdate]
+* [FreeBSD][https://www.freshports.org/net/htpdate/]
+
 ### Usage
 
-Htpdate can be used to query the time of one of more web servers,
+Htpdate can be used to query the time of one or multiple web servers,
 ```
 htpdate www.example.com http://www.example.com https://example.com
 ```
@@ -68,7 +77,7 @@ Usage: htpdate [-046acdhlnqstvxDF] [-f driftfile] [-i pidfile] [-m minpoll]
          [-u user[:group]] <URL> ...
 ```
 
-See manpage for more details.
+See man page for more details.
 
 ### See also
 
@@ -76,4 +85,3 @@ See manpage for more details.
 * https://www.ntppool.org/scores/ntp6.vervest.org, htpdate as part of NTP pool
 * https://github.com/twekkel/httpdate, non daemon version using libcurl
 * https://github.com/angeloc/htpdate, forked from htpdate 1.2.2
-* http://www.rkeene.org/oss/htp/
