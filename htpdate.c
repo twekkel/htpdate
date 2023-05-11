@@ -238,7 +238,15 @@ static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
     /* Receive data from the web server
        The return code is the number of bytes received
     */
-    ret = SSL_read(conn, buffer, BUFFERSIZE - 1) > 0;
+    explicit_bzero(buffer, BUFFERSIZE -1);
+    int n = 0;
+    for (;;) {
+        if ((n = SSL_read(conn, buffer + n, BUFFERSIZE -1)) < 0) {
+            printlog(1, "Error reading from socket");
+            break;
+        }
+        if (!n) break;
+    }
 
     return ret;
 }
@@ -313,7 +321,6 @@ static double getHTTPdate(
     /* Build a combined HTTP/1.0 and 1.1 HEAD request
        Pragma: no-cache, "forces" an HTTP/1.0 and 1.1 compliant
        web server to return a fresh timestamp
-       Connection: keep-alive, for multiple requests
     */
     snprintf(headrequest, HEADREQUESTSIZE,
         "HEAD %s/%s HTTP/1.%s\r\n"
@@ -321,7 +328,7 @@ static double getHTTPdate(
         "User-Agent: htpdate/"VERSION"\r\n"
         "Pragma: no-cache\r\n"
         "Cache-Control: no-cache\r\n"
-        "Connection: keep-alive\r\n\r\n",
+        "Connection: close\r\n\r\n",
         url, path, httpversion, host);
 
     /* Loop through the available canonical names */
