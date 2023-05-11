@@ -241,7 +241,7 @@ static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
     explicit_bzero(buffer, BUFFERSIZE -1);
     int n = 0;
     for (;;) {
-        if ((n = SSL_read(conn, buffer + n, BUFFERSIZE -1)) < 0) {
+        if ((n = SSL_read(conn, buffer + n, BUFFERSIZE - n - 1)) < 0) {
             printlog(1, "Error reading from socket");
             break;
         }
