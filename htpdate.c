@@ -33,6 +33,7 @@
 /* Needed to avoid implicit warnings from strptime */
 #define _GNU_SOURCE
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -238,14 +239,23 @@ static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
     /* Receive data from the web server
        The return code is the number of bytes received
     */
+    int socket_fd = SSL_get_fd(conn);
+    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
+
+    int bytes_read, total_bytes = 0;
     explicit_bzero(buffer, BUFFERSIZE -1);
-    int n = 0;
-    for (;;) {
-        if ((n = SSL_read(conn, buffer + n, BUFFERSIZE - n - 1)) < 0) {
-            printlog(1, "Error reading from socket");
+    while(1) {
+        bytes_read = SSL_read(conn, buffer + total_bytes, BUFFERSIZE - total_bytes);
+        // without sleep it doesn't always work
+        sleep(0.1);
+        if (bytes_read <= 0 && total_bytes > 0) {
             break;
         }
-        if (!n) break;
+        total_bytes += bytes_read;
+        if (total_bytes == BUFFERSIZE) {
+            // buffer is full, stop reading
+            break;
+        }
     }
 
     return ret;
@@ -328,7 +338,7 @@ static double getHTTPdate(
         "User-Agent: htpdate/"VERSION"\r\n"
         "Pragma: no-cache\r\n"
         "Cache-Control: no-cache\r\n"
-        "Connection: close\r\n\r\n",
+        "Connection: keep-alive\r\n\r\n",
         url, path, httpversion, host);
 
     /* Loop through the available canonical names */
