@@ -721,6 +721,7 @@ int main(int argc, char *argv[]) {
     extern int      optind;
 
     char            *driftfile = NULL;
+    char            *proxywithport = NULL;
 
     /* Parse the command line switches and arguments */
     while ((param = getopt(argc, argv, "046acdf:hi:lm:np:qstu:vxDFM:P:")) != -1)
@@ -827,7 +828,7 @@ int main(int argc, char *argv[]) {
             break;
         case 'P':
             proxyport = DEFAULT_PROXY_PORT;
-            char *proxywithport = strdup((char *)optarg);
+            proxywithport = strdup((char *)optarg);
             proxy = proxywithport;
             splitURL(&scheme, &proxy, &proxyport, &path);
             break;
@@ -1006,5 +1007,6 @@ int main(int argc, char *argv[]) {
 
     } while (daemonize || foreground);         /* end of infinite while loop */
 
+    free(proxywithport);
     exit(0);
 }
