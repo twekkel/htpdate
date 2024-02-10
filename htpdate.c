@@ -114,7 +114,7 @@ static void printlog(int is_error, char *format, ...) {
     if (logmode)
         syslog(is_error?LOG_WARNING:LOG_INFO, "%s", buf);
     else
-        fprintf(is_error?stderr:stdout, "%s\n", buf);
+        fprintf(stderr, "%s\n", buf);
 }
 
 
@@ -792,14 +792,14 @@ int main(int argc, char *argv[]) {
                 sw_uid = pw->pw_uid;
                 sw_gid = pw->pw_gid;
             } else {
-                printf("Unknown user %s\n", user);
+                fprintf(stderr, "Unknown user %s\n", user);
                 exit(1);
             }
             if (group != NULL) {
                 if ((gr = getgrnam(group)) != NULL) {
                     sw_gid = gr->gr_gid;
                 } else {
-                    printf("Unknown group %s\n", group);
+                    fprintf(stderr, "Unknown group %s\n", group);
                     exit(1);
                 }
             }
