@@ -11,24 +11,16 @@ date -s "`curl --head -s https://example.com | grep -i "Date: " | cut -d' ' -f2-
 ### Better solution... htpdate
 
 The above one-liner might result in unexpected behavior,
-* site is not reachable
-* site has wrong time
-* steps/jumps (backwards!) in time
+* when the website is not reachable
+* when the website has the wrong time
+* when time steps/jumps (backwards!) in time
+* because precision is only 1 second
 
-htpdate solves that by allowing multiple URLs as time source, eliminating
-'false tickers', gradually adjusts time and run indefinitely as daemon.
+Htpdate addresses these issues by using multiple time sources, filtering out 'false tickers', gradually adjusts time, enhancing precision and capable of running as a daemon.
 
-The HTTP Time Protocol (HTP) is used to synchronize a computer's time
-with web servers as reference time source. Htpdate will synchronize your
-computer's time by extracting timestamps from HTTP headers found
-in web server responses. Htpdate can be used as a daemon, to keep your
-computer synchronized.
-The accuracy of htpdate is at least -+0.5 seconds, but can be in the range
-of ~10 ms (see -p option). If this is not good enough for you, use a ntp package.
+The HTTP Time Protocol (HTP) is used to synchronize a computer's time with web servers as reference time source. Htpdate will synchronize your computer's time by extracting timestamps from HTTP headers found in web server responses. Htpdate can be used as a daemon, to keep your computer synchronized.  The accuracy of htpdate is at least -+0.5 seconds, but can be in the range of ~10 ms (see -p option). If this is not good enough for you, use a ntp package.
 
-Install the htpdate package if you need tools for keeping your system's
-time synchronized via the HTP protocol. Htpdate works also through
-proxy servers.
+Install the htpdate package if you need tools for keeping your system's time synchronized via the HTP protocol. Htpdate works also through proxy servers.
 
 ### Installation
 
