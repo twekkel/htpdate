@@ -111,10 +111,20 @@ static void printlog(int is_error, char *format, ...) {
     (void) vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
 
-    if (logmode)
-        syslog(is_error?LOG_WARNING:LOG_INFO, "%s", buf);
-    else
-        fprintf(is_error?stderr:stdout, "%s\n", buf);
+    switch(logmode) {
+        case 0:
+            fprintf(is_error?stderr:stdout, "%s\n", buf);
+            break;
+        case 1:
+            syslog(is_error?LOG_WARNING:LOG_INFO, "%s", buf);
+            break;
+        case 2:
+            fprintf(stderr, "%s\n", buf);
+            break;
+        default:
+            fprintf(stderr, "%s\n", "Invalid logmode, aborting");
+            abort();
+    }
 }
 
 
@@ -792,14 +802,14 @@ int main(int argc, char *argv[]) {
                 sw_uid = pw->pw_uid;
                 sw_gid = pw->pw_gid;
             } else {
-                printf("Unknown user %s\n", user);
+                printlog(1, "Unknown user %s\n", user);
                 exit(1);
             }
             if (group != NULL) {
                 if ((gr = getgrnam(group)) != NULL) {
                     sw_gid = gr->gr_gid;
                 } else {
-                    printf("Unknown group %s\n", group);
+                    printlog(1, "Unknown group %s\n", group);
                     exit(1);
                 }
             }
@@ -818,6 +828,7 @@ int main(int argc, char *argv[]) {
             break;
         case 'F':               /* run daemon in foreground, don't fork */
             foreground = 1;
+            logmode = 2;
             break;
         case 'M':               /* maximum poll interval */
             if ((maxsleep = atoi(optarg)) <= 0) {
@@ -831,10 +842,8 @@ int main(int argc, char *argv[]) {
             proxy = proxywithport;
             splitURL(&scheme, &proxy, &proxyport, &path);
             break;
-        case '?':
-            return 1;
         default:
-            abort();
+            exit(1);
     }
 
     /* Display help page, if no servers are specified */
