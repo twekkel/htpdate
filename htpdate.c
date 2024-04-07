@@ -581,7 +581,7 @@ static int htpdate_adjtimex(double drift, char *driftfile, float confidence) {
     freq = (long)(65536e6 * drift);
 
     /* Weighted average of current and new frequency */
-    tmx.freq = tmx.freq + freq * confidence;
+    tmx.freq = (tmx.freq + freq * confidence) / (1 + confidence);
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
         tmx.freq = sign(tmx.freq) * MAX_DRIFT;
 
