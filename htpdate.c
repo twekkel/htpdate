@@ -71,7 +71,7 @@
 #define NO_TIME_LIMIT            -1
 #define ERR_TIMESTAMP            DBL_MAX          /* Err fetching date in getHTTPdate */
 #define DEFAULT_PRECISION        4                 /* 4 request per host */
-#define DEFAULT_MIN_SLEEP        1800              /* 30 minutes */
+#define DEFAULT_MIN_SLEEP        900               /* 15 minutes */
 #define DEFAULT_MAX_SLEEP        115200            /* 32 hours */
 #define MAX_DRIFT                32768000          /* 500 PPM */
 #define DEFAULT_PID_FILE         "/var/run/htpdate.pid"
@@ -972,7 +972,6 @@ int main(int argc, char *argv[]) {
 
                         /* Adjust system clock */
                         if (setmode == 3) {
-                            starttime = time(NULL);
                             /* Adjust the clock frequency */
                             if (htpdate_adjtimex(drift, driftfile, (float)sleeptime / (float)maxsleep) < 0)
                                 printlog(1, "Frequency change failed");
@@ -980,14 +979,14 @@ int main(int argc, char *argv[]) {
                             /* Drop root privileges again */
                             if (sw_uid) swuid(sw_uid);
                         }
-                    } else {
-                        starttime = time(NULL);
                     }
+
+                    starttime = time(NULL);
 
                     /* Decrease polling interval to minimum */
                     sleeptime = minsleep;
 
-                    /* Sleep for 30 minutes after a time adjust or set */
+                    /* Sleep for 15 minutes after a time adjust or set */
                     sleep(DEFAULT_MIN_SLEEP);
                 }
             } else {
@@ -997,7 +996,7 @@ int main(int argc, char *argv[]) {
             }
 
             if (daemonize || foreground) {
-                printlog(0, "sleep for %ld s", sleeptime);
+                printlog(0, "Sleep %ld s", sleeptime);
                 sleep(sleeptime);
             }
 
