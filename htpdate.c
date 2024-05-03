@@ -570,18 +570,14 @@ static int init_frequency(char *driftfile) {
 
 static int htpdate_adjtimex(double drift, char *driftfile, float confidence) {
     struct timex    tmx;
-    long            freq;
     FILE            *fp;
 
     /* Read current clock frequency */
     tmx.modes = 0;
     adjtimex(&tmx);
 
-    /* Calculate new frequency */
-    freq = (long)(65536e6 * drift);
-
     /* Weighted average of current and new frequency */
-    tmx.freq = tmx.freq + freq * confidence;
+    tmx.freq = tmx.freq + 65536e6 * drift * confidence;
     if ((tmx.freq < -MAX_DRIFT) || (tmx.freq > MAX_DRIFT))
         tmx.freq = sign(tmx.freq) * MAX_DRIFT;
 
@@ -747,7 +743,7 @@ int main(int argc, char *argv[]) {
         case 'a':               /* adjust time */
             setmode = 1;
             break;
-        case 'c':               /* server certificat verification */
+        case 'c':               /* server certificate verification */
             verifycert = 1;
             break;
         case 'd':               /* turn debug on */
