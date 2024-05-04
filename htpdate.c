@@ -982,8 +982,9 @@ int main(int argc, char *argv[]) {
                     /* Decrease polling interval to minimum */
                     sleeptime = minsleep;
 
-                    /* Sleep for 15 minutes after a time adjust or set */
-                    sleep(DEFAULT_MIN_SLEEP);
+                    /* Sleep for some time after a time adjust or set */
+                    sleep(abs(timeavg*2000));
+
                 }
             } else {
                 /* Increase polling interval */
