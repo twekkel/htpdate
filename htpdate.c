@@ -387,6 +387,7 @@ static double getHTTPdate(
 
     long long offset = 0, first_offset = 0, prev_offset = 0;
     long nap = 1e9L;
+    long latency = 0;
     long when = nap >> precision;
     do {
         if (debug > 1)
@@ -400,12 +401,13 @@ static double getHTTPdate(
 
         /* Wait till we reach the desired time, "when" */
         sleepspec.tv_sec = 0;
-        if (when >= now.tv_nsec) {
-            sleepspec.tv_nsec = when - now.tv_nsec;
+        if (when - latency >= now.tv_nsec) {
+            sleepspec.tv_nsec = when - now.tv_nsec - latency;
         } else {
-            sleepspec.tv_nsec = 1e9 + when - now.tv_nsec;
+            sleepspec.tv_nsec = 1e9 + when - now.tv_nsec - latency;
             rtt++;
         }
+
         nanosleep(&sleepspec, NULL);
 
         /* Send HEAD request */
@@ -424,7 +426,14 @@ static double getHTTPdate(
             clock_gettime(CLOCK_REALTIME, &now);
 
             /* rtt contains round trip time in nanoseconds */
-            rtt = (now.tv_sec - rtt) * 1e9 + now.tv_nsec - when;
+            rtt = (now.tv_sec - rtt) * 1e9 + now.tv_nsec - when + latency;
+
+             /* Obtain rtt/latency first */
+            if (latency == 0) {
+                latency = rtt / 2;
+                continue;
+            }
+            latency = rtt / 2;
 
             /* Look for the line that contains [dD]ate: */
             if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
@@ -503,13 +512,13 @@ static int setclock(double timedelta, int setmode) {
 
     switch (setmode) {
         case 0:                        /* No time adjustment, just print time */
-            printlog(0, "Offset %.3f seconds", timedelta);
+            printlog(0, "Offset %.1f ms", timedelta * 1e3);
             return(0);
         case 1:                        /* Adjust time smoothly */
             timeofday.tv_sec  = (long)timedelta;
             timeofday.tv_usec = (long)((timedelta - timeofday.tv_sec) * 1e6);
 
-            printlog(0, "Adjusting %.3f seconds", timedelta);
+            printlog(0, "Adjusting %.1f ms", timedelta * 1e3);
 
             /* Become root */
             swuid(0);
@@ -984,7 +993,6 @@ int main(int argc, char *argv[]) {
 
                     /* Sleep for some time after a time adjust or set */
                     sleep(abs(timeavg*2000));
-
                 }
             } else {
                 /* Increase polling interval */
