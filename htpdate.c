@@ -61,6 +61,16 @@
 #include <openssl/ssl.h>
 #endif
 
+#define LICENSE "\
+Copyright (C) 2004-2024 Eddy Vervest.\n\
+\n\
+This program is free software; you can redistribute it and/or modify\n\
+it under the terms of the GNU General Public License as published by\n\
+the Free Software Foundation; either version 2 of the License, or (at\n\
+your option) any later version.\n\
+\n\
+There is NO WARRANTY, to the extent permitted by law."
+
 #define VERSION                  "1.3.7"
 #define MAX_HTTP_HOSTS           16                /* 16 web servers */
 #define DEFAULT_HTTP_PORT        "80"
@@ -820,7 +830,7 @@ int main(int argc, char *argv[]) {
             }
             break;
         case 'v':               /* print version */
-            printf("htpdate version %s\n", VERSION);
+            puts("htpdate version "VERSION"\n"LICENSE"");
             exit(0);
         case 'x':               /* adjust time and clock frequency */
             setmode = 3;
