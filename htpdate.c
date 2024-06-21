@@ -49,6 +49,7 @@
 #include <syslog.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <math.h>
 #include <pwd.h>
 #include <grp.h>
 #include <float.h>
@@ -1002,7 +1003,7 @@ int main(int argc, char *argv[]) {
                     sleeptime = minsleep;
 
                     /* Sleep for some time after a time adjust or set */
-                    sleep(abs(timeavg*2000));
+                    sleep(fabs(timeavg*2000));
                 }
             } else {
                 /* Increase polling interval */
