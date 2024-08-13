@@ -500,10 +500,10 @@ static double getHTTPdate(
 }
 
 
-static int setstatus(int precision) {
+static int setstatus() {
     struct timex txc = {0};
 
-    txc.modes = MOD_STATUS | (1000000 >> precision) | MOD_MAXERROR;
+    txc.modes = MOD_STATUS | MOD_ESTERROR | MOD_MAXERROR;
     txc.status &= ~STA_UNSYNC;
     printlog(0, "Set clock synchronized");
 
@@ -1008,7 +1008,7 @@ int main(int argc, char *argv[]) {
             } else {
                 /* Increase polling interval */
                 if (sleeptime < maxsleep) sleeptime <<= 1;
-                if (setmode == 3) setstatus(precision);
+                if (setmode == 3) setstatus();
             }
 
             if (daemonize || foreground) {
