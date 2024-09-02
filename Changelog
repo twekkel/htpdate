@@ -1,5 +1,15 @@
-Changes in 1.3.7
+Changes in 2.0.0
 ----------------
+
+The major version doesn't indicate big changes, only that htpdate is 2 decades old!
+
+- bugfix incorrect "estimated error" (relevant for "-x" option)
+- improvement: make all implicit conversions explicit
+- improvement: take network latency into account
+- change: log to stderr instead of stdout when using "-F"
+
+1.3.7
+-----
 
 - bugfix: wrong default portnumber for proxy was used
 - bugfix: https://bugs.launchpad.net/ubuntu/+source/htpdate/+bug/1850740
