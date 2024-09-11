@@ -781,6 +781,7 @@ int main(int argc, char *argv[]) {
             break;
         case 'l':               /* log mode */
             logmode = 1;
+            openlog("htpdate",LOG_NDELAY||LOG_PID,LOG_DAEMON);
             break;
         case 'm':               /* minimum poll interval */
             if ((minsleep = (unsigned int)atoi(optarg)) <= 0) {
