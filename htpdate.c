@@ -939,7 +939,7 @@ int main(int argc, char *argv[]) {
             }
 
             /* Only include valid responses in timedelta[] */
-            if ((timelimit == NO_TIME_LIMIT && offset != ERR_TIMESTAMP) || (offset < timelimit && offset > -timelimit)) {
+            if ((timelimit == NO_TIME_LIMIT && offset != ERR_TIMESTAMP) || (fabs(offset) < timelimit)) {
                 timedelta[validtimes] = offset;
                 validtimes++;
             }
