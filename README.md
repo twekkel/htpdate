@@ -74,6 +74,5 @@ See man page for more details.
 ### See also
 
 * https://www.vervest.org/htp, home of HTTP Time Protocol
-* https://www.ntppool.org/scores/ntp6.vervest.org, htpdate as part of NTP pool
 * https://github.com/twekkel/httpdate, non daemon version using libcurl
 * https://github.com/angeloc/htpdate, forked from htpdate 1.2.2
