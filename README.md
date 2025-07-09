@@ -40,6 +40,7 @@ make install
 ### Packages
 
 Many Linux distributions and FreeBSD system provide a htpdate package, which should be preferred over manual compilation and installation from downloaded source code as the packages are likely integrated with the rest of the system (e.g. service files and networking scripts).
+* [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=htpdate&arch=)
 * [Arch Linux](https://aur.archlinux.org/packages/htpdate)
 * [Debian](https://packages.debian.org/search?searchon=names&keywords=htpdate)
 * [Gentoo](https://packages.gentoo.org/packages/net-misc/htpdate)
