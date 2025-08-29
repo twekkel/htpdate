@@ -54,6 +54,8 @@
 #include <grp.h>
 #include <float.h>
 
+#include "base64.h"
+
 #if defined __NetBSD__ || defined __FreeBSD__ || defined __APPLE__
 #define adjtimex ntp_adjtime
 #endif
@@ -142,8 +144,8 @@ static void printlog(int is_error, char *format, ...) {
 /* Split argument in hostname/IP-address and TCP port
    Supports IPv6 literal addresses, RFC 2732.
 */
-static void splitURL(char **scheme, char **host, char **port, char **path) {
-    char *rb, *rc, *lb, *lc, *ps;
+static void splitURL(char **scheme, char **host, char **port, char **path, char **auth) {
+    char *rb, *rc, *lb, *lc, *ps, *basic_auth;
 
     *path = "";
     *scheme = NULL;
@@ -161,6 +163,15 @@ static void splitURL(char **scheme, char **host, char **port, char **path) {
     if ((ps = strcasestr(*host, "http://")) != NULL) {
         *host = ps + 7;
     }
+
+    basic_auth = strchr(*host, '@');
+    /* Extract user:pass combo */
+    if (basic_auth != NULL) {
+        basic_auth[0] = '\0';
+        *auth = *host;
+        *host = basic_auth + 1;
+    }
+
 
     lb = strchr(*host, '[');
     rb = strrchr(*host, ']');
@@ -289,8 +300,8 @@ static int proxyCONNECT(
 
 static double getHTTPdate(
     char *scheme,
-    char *host, char *port, char *path,
-    char *proxy, char *proxyport,
+    char *host, char *port, char *path, char *auth,
+    char *proxy, char *proxyport, char *proxyauth,
     char *httpversion, int ipversion, int precision) {
 
     int                 server_s;
@@ -302,6 +313,9 @@ static double getHTTPdate(
     char                buffer[BUFFERSIZE] = {'\0'};
     char                url[URLSIZE] = {'\0'};
     char                *pdate = NULL;
+    char                auth_header[HEADREQUESTSIZE] = {'\0'};
+    char                *auth_buffer = NULL;
+    char                *proxy_auth_buffer = NULL;
 
     /* Connect to web server via proxy server or directly */
     memset(&hints, 0, sizeof(hints));
@@ -331,6 +345,42 @@ static double getHTTPdate(
         return(ERR_TIMESTAMP);
     }
 
+    /*
+     * Build the basic auth header
+     * */
+    if (auth != NULL) {
+        auth_buffer = (char*) base64_encode((unsigned char*) auth, strlen(auth), NULL);
+        if (auth_buffer == NULL) {
+            printlog(1, "Error encoding base64 for auth to %s", host);
+            return(ERR_TIMESTAMP);
+        }
+
+        if (proxyauth != NULL) {
+            proxy_auth_buffer = (char*) base64_encode((unsigned char*) proxyauth, strlen(proxyauth), NULL);
+            if (proxy_auth_buffer == NULL) {
+                printlog(1, "Error encoding base64 for auth to proxy %s", proxy);
+                return(ERR_TIMESTAMP);
+            }
+            snprintf(
+                auth_header,
+                HEADREQUESTSIZE,
+                "Authorization: Basic %s\r\n"
+                "Proxy-Authentication: Basic %s\r\n",
+                auth_buffer, proxy_auth_buffer
+            );
+            free(auth_buffer);
+            auth_buffer = NULL;
+            free(proxy_auth_buffer);
+            proxy_auth_buffer = NULL;
+
+        } else {
+            snprintf(auth_header, HEADREQUESTSIZE, "Authorization: Basic %s\r\n", auth_buffer);
+            free(auth_buffer);
+            auth_buffer = NULL;
+        }
+    }
+
+
     /* Build a combined HTTP/1.0 and 1.1 HEAD request
        Pragma: no-cache, "forces" an HTTP/1.0 and 1.1 compliant
        web server to return a fresh timestamp
@@ -342,8 +392,11 @@ static double getHTTPdate(
         "User-Agent: htpdate/"VERSION"\r\n"
         "Pragma: no-cache\r\n"
         "Cache-Control: no-cache\r\n"
-        "Connection: keep-alive\r\n\r\n",
-        url, path, httpversion, host);
+        "Connection: keep-alive\r\n"
+        "%s"
+        "\r\n",
+        url, path, httpversion, host, auth_header);
+
 
     /* Loop through the available canonical names */
     do {
@@ -721,6 +774,7 @@ int main(int argc, char *argv[]) {
     char            *port = NULL;
     char            *path = NULL;
     char            *scheme = NULL;
+    char            *auth = NULL, *proxyauth = NULL;
     char            *httpversion = DEFAULT_HTTP_VERSION;
     char            *pidfile = DEFAULT_PID_FILE;
     char            *user = NULL, *userstr = NULL, *group = NULL;
@@ -857,7 +911,7 @@ int main(int argc, char *argv[]) {
             proxyport = DEFAULT_PROXY_PORT;
             char *proxywithport = strdup((char *)optarg);
             proxy = proxywithport;
-            splitURL(&scheme, &proxy, &proxyport, &path);
+            splitURL(&scheme, &proxy, &proxyport, &path, &proxyauth);
             break;
         default:
             exit(1);
@@ -885,7 +939,7 @@ int main(int argc, char *argv[]) {
         if (debug) printlog(0, "Proxy: %s", proxy);
         proxy += 7;
         proxyport = DEFAULT_PROXY_PORT;
-        splitURL(&scheme, &proxy, &proxyport, &path);
+        splitURL(&scheme, &proxy, &proxyport, &path, &proxyauth);
     }
 
     /* One must be "root" to change the system time */
@@ -929,10 +983,10 @@ int main(int argc, char *argv[]) {
             char *hostport = strdup(argv[i]);
             host = hostport;
             port = DEFAULT_HTTP_PORT;
-            splitURL(&scheme, &host, &port, &path);
+            splitURL(&scheme, &host, &port, &path, &auth);
 
-            double offset = getHTTPdate(scheme, host, port, path,
-                proxy, proxyport, httpversion, ipversion, precision);
+            double offset = getHTTPdate(scheme, host, port, path, auth,
+                proxy, proxyport, proxyauth, httpversion, ipversion, precision);
             free(hostport);
             if (debug && offset != ERR_TIMESTAMP) {
                 printlog(0, "offset: %.6f", offset);

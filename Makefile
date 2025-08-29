@@ -12,10 +12,10 @@ STRIP   ?= strip -s
 all: htpdate
 
 htpdate: htpdate.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o htpdate htpdate.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o htpdate htpdate.c base64.c
 
 https: htpdate.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c $(SSL_LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -DENABLE_HTTPS -o htpdate htpdate.c base64.c $(SSL_LIBS)
 
 install: all
 	$(STRIP) htpdate
@@ -36,6 +36,8 @@ test:
 	./htpdate -p1 93.184.216.34:80
 	./htpdate -p1 [2606:2800:220:1:248:1893:25c8:1946]
 	./htpdate -h
+	./htpdate -q https://a:b@httpbin.org/basic-auth/a/b
+	./htpdate -P https://c:d@httpbin.org/basic-auth/c/d https://a:b@httpbin.org/basic-auth/a/b
 
 clean:
 	rm -rf htpdate
