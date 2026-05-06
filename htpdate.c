@@ -249,12 +249,19 @@ static int sendHEAD(int server_s, char *headrequest, char *buffer) {
         return -1;
     }
 
-    /* Receive data from the web server
-       The return code from recv() is the number of bytes received
-    */
-    ret = recv(server_s, buffer, BUFFERSIZE - 1, 0) > 0;
+    int bytes_read = 0, n;
+    while (bytes_read < BUFFERSIZE - 1) {
+        /* Receive data from the web server
+           The return code from recv() is the number of bytes received
+        */
+        n = recv(server_s, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read, 0);
+        if (n <= 0) break;
+        bytes_read += n;
+        buffer[bytes_read] = '\0';
+        if (strstr(buffer, "\r\n\r\n")) break;  /* end of HTTP headers */
+    }
 
-    return ret;
+    return bytes_read > 0;
 }
 
 
@@ -267,12 +274,16 @@ static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
         return -1;
     }
 
-    /* Receive data from the web server
-       The return code is the number of bytes received
-    */
-    ret = SSL_read(conn, buffer, BUFFERSIZE - 1) > 0;
+    int bytes_read = 0, n;
+    while (bytes_read < BUFFERSIZE - 1) {
+        n = SSL_read(conn, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read);
+        if (n <= 0) break;
+        bytes_read += n;
+        buffer[bytes_read] = '\0';
+        if (strstr(buffer, "\r\n\r\n")) break;  /* end of HTTP headers */
+    }
 
-    return ret;
+    return bytes_read > 0;
 }
 
 
