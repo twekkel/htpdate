@@ -1,8 +1,7 @@
 /*
-    htpdate v2.0.1
+    htpdate v2.0.2
 
     Eddy Vervest <eddy@vervest.org>
-    http://www.vervest.org/htp
 
     Synchronize local system with time offered by remote web servers
 
@@ -65,7 +64,7 @@
 #endif
 
 #define LICENSE "\
-Copyright (C) 2004-2024 Eddy Vervest.\n\
+Copyright (C) 2004-2026 Eddy Vervest.\n\
 \n\
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License as published by\n\
@@ -74,7 +73,7 @@ your option) any later version.\n\
 \n\
 There is NO WARRANTY, to the extent permitted by law."
 
-#define VERSION                  "2.0.1"
+#define VERSION                  "2.0.2"
 #define MAX_HTTP_HOSTS           16                /* 16 web servers */
 #define DEFAULT_HTTP_PORT        "80"
 #define DEFAULT_PROXY_PORT       "8080"
