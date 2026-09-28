@@ -153,10 +153,11 @@ static void splitURL(char **scheme, char **host, char **port, char **path, char 
         #ifndef ENABLE_HTTPS
         printlog(1, "HTTPS not supported, %s", *host);
         return;
-        #endif
+        #else
         *scheme = "https://";
         *port = "443";
         *host = ps + 8;
+        #endif
     }
 
     if ((ps = strcasestr(*host, "http://")) != NULL) {
@@ -248,12 +249,12 @@ static int sendHEAD(int server_s, char *headrequest, char *buffer) {
         return -1;
     }
 
-    int bytes_read = 0, n;
+    int bytes_read = 0;
     while (bytes_read < BUFFERSIZE - 1) {
         /* Receive data from the web server
            The return code from recv() is the number of bytes received
         */
-        n = recv(server_s, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read, 0);
+        int n = recv(server_s, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read, 0);
         if (n <= 0) break;
         bytes_read += n;
         buffer[bytes_read] = '\0';
@@ -273,9 +274,9 @@ static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
         return -1;
     }
 
-    int bytes_read = 0, n;
+    int bytes_read = 0;
     while (bytes_read < BUFFERSIZE - 1) {
-        n = SSL_read(conn, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read);
+        int n = SSL_read(conn, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read);
         if (n <= 0) break;
         bytes_read += n;
         buffer[bytes_read] = '\0';
@@ -288,9 +289,9 @@ static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
 
 static int proxyCONNECT(
     int server_s,
-    char *host, char *port,
+    const char *host, const char *port,
     char *proxy, char *proxyport,
-    char *httpversion) {
+    const char *httpversion) {
 
     char buffer[BUFFERSIZE] = {'\0'};
     char connectrequest[URLSIZE] = {'\0'};
@@ -309,10 +310,10 @@ static int proxyCONNECT(
 
 
 static double getHTTPdate(
-    char *scheme,
-    char *host, char *port, char *path, char *auth,
+    const char *scheme,
+    char *host, char *port, const char *path, char *auth,
     char *proxy, char *proxyport, char *proxyauth,
-    char *httpversion, int ipversion, int precision) {
+    const char *httpversion, int ipversion, int precision) {
 
     int                 server_s;
     int                 rc;
@@ -322,7 +323,7 @@ static double getHTTPdate(
     char                headrequest[HEADREQUESTSIZE] = {'\0'};
     char                buffer[BUFFERSIZE] = {'\0'};
     char                url[URLSIZE] = {'\0'};
-    char                *pdate = NULL;
+    const char          *pdate = NULL;
     char                auth_header[HEADREQUESTSIZE] = {'\0'};
     char                *auth_buffer = NULL;
     char                *proxy_auth_buffer = NULL;
@@ -653,7 +654,6 @@ static int init_frequency(char *driftfile) {
 
 static int htpdate_adjtimex(double drift, char *driftfile, float confidence) {
     struct timex    tmx;
-    FILE            *fp;
 
     /* Read current clock frequency */
     tmx.modes = 0;
@@ -668,7 +668,7 @@ static int htpdate_adjtimex(double drift, char *driftfile, float confidence) {
     tmx.modes = MOD_FREQUENCY;
 
     if (driftfile) {
-       fp = fopen(driftfile, "w");
+       FILE *fp = fopen(driftfile, "w");
        if (fp != NULL) {
            printlog(0, "Update %s", driftfile);
            fprintf(fp, "%li", tmx.freq);
@@ -719,7 +719,7 @@ Usage: htpdate [-046acdhlnqstvxDF] [-f driftfile] [-i pidfile] [-m minpoll]\n\
 
 
 /* Run htpdate in daemon mode */
-static void runasdaemon(char *pidfile) {
+static void runasdaemon(const char *pidfile) {
     FILE  *pid_file;
     pid_t pid;
 
@@ -785,8 +785,8 @@ int main(int argc, char *argv[]) {
     char            *path = NULL;
     char            *scheme = NULL;
     char            *auth = NULL, *proxyauth = NULL;
-    char            *httpversion = DEFAULT_HTTP_VERSION;
-    char            *pidfile = DEFAULT_PID_FILE;
+    const char      *httpversion = DEFAULT_HTTP_VERSION;
+    const char      *pidfile = DEFAULT_PID_FILE;
     char            *user = NULL, *userstr = NULL, *group = NULL;
     double          timeavg, drift = 0;
     double          timedelta[MAX_HTTP_HOSTS-1];
@@ -804,8 +804,8 @@ int main(int argc, char *argv[]) {
     unsigned int    sw_gid = 0, sw_uid = 0;
     time_t          starttime = 0;
 
-    struct passwd   *pw;
-    struct group    *gr;
+    const struct passwd   *pw;
+    const struct group    *gr;
 
     extern char     *optarg;
     extern int      optind;
@@ -848,7 +848,8 @@ int main(int argc, char *argv[]) {
             openlog("htpdate",LOG_NDELAY||LOG_PID,LOG_DAEMON);
             break;
         case 'm':               /* minimum poll interval */
-            if ((minsleep = (unsigned int)atoi(optarg)) <= 0) {
+            minsleep = atoi(optarg);
+            if (minsleep == 0) {
                 fputs("Invalid sleep time\n", stderr);
                 exit(1);
             }
@@ -912,7 +913,8 @@ int main(int argc, char *argv[]) {
             logmode = 2;
             break;
         case 'M':               /* maximum poll interval */
-            if ((maxsleep = (unsigned int)atoi(optarg)) <= 0) {
+            maxsleep = atoi(optarg);
+            if (maxsleep == 0) {
                 fputs("Invalid sleep time\n", stderr);
                 exit(1);
             }
