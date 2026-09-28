@@ -376,7 +376,7 @@ static double getHTTPdate(
                 auth_header,
                 HEADREQUESTSIZE,
                 "Authorization: Basic %s\r\n"
-                "Proxy-Authentication: Basic %s\r\n",
+                "Proxy-Authorization: Basic %s\r\n",
                 auth_buffer, proxy_auth_buffer
             );
             free(auth_buffer);
