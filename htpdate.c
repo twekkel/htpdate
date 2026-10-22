@@ -318,7 +318,7 @@ static double getHTTPdate(
     int                 server_s;
     int                 rc;
     int                 polls = 0;
-    struct addrinfo     hints, *res;
+    struct addrinfo     hints, *res = NULL, *res_head = NULL;
     struct timespec     sleepspec, now;
     char                headrequest[HEADREQUESTSIZE] = {'\0'};
     char                buffer[BUFFERSIZE] = {'\0'};
@@ -353,8 +353,10 @@ static double getHTTPdate(
     /* Was the hostname and service resolvable? */
     if (rc) {
         printlog(1, "%s host or service unavailable", host);
+        freeaddrinfo(res);
         return(ERR_TIMESTAMP);
     }
+    res_head = res;
 
     /*
      * Build the basic auth header
@@ -426,7 +428,7 @@ static double getHTTPdate(
         break;
     } while ((res = res->ai_next));
 
-    freeaddrinfo(res);
+    freeaddrinfo(res_head);
 
     if (rc) {
         printlog(1, "%s connection failed", host);
