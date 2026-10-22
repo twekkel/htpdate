@@ -589,7 +589,8 @@ static int setstatus() {
 
     txc.modes = MOD_STATUS | MOD_ESTERROR | MOD_MAXERROR;
     txc.status &= ~STA_UNSYNC;
-    printlog(0, "Set clock synchronized");
+    if (debug)
+        printlog(0, "Set clock synchronized");
 
     return(adjtimex(&txc));
 }
@@ -1054,6 +1055,10 @@ int main(int argc, char *argv[]) {
 
             timeavg = sumtimes / goodtimes;
 
+            /* Consider +/- .5s a valid sync state */
+            if (setmode == 3 && fabs(timeavg) < 0.5)
+                setstatus();
+
             /* Avoid bouncing between upper/lower limit when (almost) in sync */
             if (timeavg < 1 && timeavg > -1) timeavg /= 2;
 
@@ -1096,7 +1101,6 @@ int main(int argc, char *argv[]) {
             } else {
                 /* Increase polling interval */
                 if (sleeptime < maxsleep) sleeptime <<= 1;
-                if (setmode == 3) setstatus();
             }
 
             if (daemonize || foreground) {
