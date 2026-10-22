@@ -4,7 +4,7 @@ mandir = ${prefix}/share/man
 
 CC       ?= gcc
 CFLAGS   += -Wall -std=c11 -pedantic -O2
-SSL_LIBS ?= -lssl
+SSL_LIBS ?= -lcrypto -lssl
 
 INSTALL ?= install -c
 STRIP   ?= strip -s

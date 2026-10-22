@@ -61,6 +61,7 @@
 
 #ifdef ENABLE_HTTPS
 #include <openssl/ssl.h>
+#include <openssl/x509v3.h>
 #endif
 
 #define LICENSE "\
@@ -458,6 +459,19 @@ static double getHTTPdate(
                printlog(1, "TLS error2");
                return(ERR_TIMESTAMP);
            }
+        }
+        if (verifycert) {
+            X509 *cert = SSL_get_peer_certificate(conn);
+            if (cert == NULL) {
+                printlog(1, "Certificate verification failed for %s: no certificate presented", host);
+                return(ERR_TIMESTAMP);
+            }
+            if (X509_check_host(cert, host, strlen(host), 0, NULL) != 1) {
+                printlog(1, "Certificate hostname mismatch for %s", host);
+                X509_free(cert);
+                return(ERR_TIMESTAMP);
+            }
+            X509_free(cert);
         }
     }
     #endif
