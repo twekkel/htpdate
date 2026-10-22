@@ -1104,7 +1104,8 @@ int main(int argc, char *argv[]) {
             }
 
             if (daemonize || foreground) {
-                printlog(0, "Sleep %ld s", sleeptime);
+                if (debug)
+                    printlog(0, "Sleep %ld s", sleeptime);
                 sleep(sleeptime);
             }
 
