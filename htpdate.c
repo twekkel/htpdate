@@ -527,7 +527,7 @@ static double getHTTPdate(
             latency = rtt / 2;
 
             /* Look for the line that contains [dD]ate: */
-            if ((pdate = strcasestr(buffer, "date: ")) != NULL && strlen(pdate) >= 35) {
+            if ((pdate = strcasestr(buffer, "date: ")) != NULL) {
 
                 if (debug > 2) printlog(0, "%s", buffer);
                 char remote_time[25] = {'\0'};
