@@ -803,6 +803,7 @@ int main(int argc, char *argv[]) {
     unsigned int    sleeptime = minsleep;
     unsigned int    sw_gid = 0, sw_uid = 0;
     time_t          starttime = 0;
+    char            *proxy_owned = NULL;
 
     const struct passwd   *pw;
     const struct group    *gr;
@@ -921,8 +922,8 @@ int main(int argc, char *argv[]) {
             break;
         case 'P':
             proxyport = DEFAULT_PROXY_PORT;
-            char *proxywithport = strdup((char *)optarg);
-            proxy = proxywithport;
+            proxy_owned = strdup((char *)optarg);
+            proxy = proxy_owned;
             splitURL(&scheme, &proxy, &proxyport, &path, &proxyauth);
             break;
         default:
@@ -1096,6 +1097,9 @@ int main(int argc, char *argv[]) {
         }
 
     } while (daemonize || foreground);         /* end of infinite while loop */
+
+    if (proxy_owned != NULL)
+        free(proxy_owned);
 
     exit(0);
 }
