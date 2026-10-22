@@ -545,9 +545,13 @@ static double getHTTPdate(
     close(server_s);
 
     #ifdef ENABLE_HTTPS
-    if (scheme) SSL_shutdown(conn);
-    SSL_CTX_free(tls_ctx);
-    SSL_free(conn);
+    if (scheme && conn) {
+        SSL_shutdown(conn);
+        SSL_free(conn);
+        conn = NULL;
+    }
+    if (tls_ctx)
+        SSL_CTX_free(tls_ctx);
     #endif
 
     /* Rounding */
