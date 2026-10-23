@@ -341,7 +341,7 @@ static double getHTTPdate(
     char *proxy, char *proxyport, char *proxyauth,
     const char *httpversion, int ipversion, int precision) {
 
-    int                 server_s;
+    int                 server_s = -1;
     int                 rc;
     int                 polls = 0;
     struct addrinfo     hints, *res = NULL, *res_head = NULL;
@@ -353,6 +353,11 @@ static double getHTTPdate(
     char                auth_header[HEADREQUESTSIZE] = {'\0'};
     char                *auth_buffer = NULL;
     char                *proxy_auth_buffer = NULL;
+    double              result_timestamp = ERR_TIMESTAMP;
+
+    #ifdef ENABLE_HTTPS
+    SSL                 *conn = NULL;
+    #endif
 
     /* Connect to web server via proxy server or directly */
     memset(&hints, 0, sizeof(hints));
@@ -379,7 +384,7 @@ static double getHTTPdate(
     /* Was the hostname and service resolvable? */
     if (rc) {
         printlog(1, "%s host or service unavailable", host);
-        freeaddrinfo(res);
+        if (res) freeaddrinfo(res);
         return(ERR_TIMESTAMP);
     }
     res_head = res;
@@ -391,14 +396,14 @@ static double getHTTPdate(
         auth_buffer = (char*) base64_encode((unsigned char*) auth, strlen(auth), NULL);
         if (auth_buffer == NULL) {
             printlog(1, "Error encoding base64 for auth to %s", host);
-            return(ERR_TIMESTAMP);
+            goto cleanup;
         }
 
         if (proxyauth != NULL) {
             proxy_auth_buffer = (char*) base64_encode((unsigned char*) proxyauth, strlen(proxyauth), NULL);
             if (proxy_auth_buffer == NULL) {
                 printlog(1, "Error encoding base64 for auth to proxy %s", proxy);
-                return(ERR_TIMESTAMP);
+                goto cleanup;
             }
             snprintf(
                 auth_header,
@@ -454,49 +459,50 @@ static double getHTTPdate(
         break;
     } while ((res = res->ai_next));
 
-    freeaddrinfo(res_head);
+    if (res_head) {
+        freeaddrinfo(res_head);
+        res_head = NULL;
+    }
 
     if (rc) {
         printlog(1, "%s connection failed", host);
-        return(ERR_TIMESTAMP);
+        goto cleanup;
     }
 
     #ifdef ENABLE_HTTPS
-    SSL *conn = NULL;
     if (scheme) {
         SSL_CTX *ctx = get_tls_ctx();
         if (ctx == NULL || (conn = SSL_new(ctx)) == NULL) {
             printlog(1, "TLS error0");
-            close(server_s);
-            return(ERR_TIMESTAMP);
+            goto cleanup;
         }
         SSL_set_tlsext_host_name(conn, host);
         if (proxy) {
             rc = proxyCONNECT(server_s, host, port, proxy, proxyport, httpversion);
             if (rc != 1) {
                 printlog(1, "Proxy error: %i", rc);
-                return(ERR_TIMESTAMP);
+                goto cleanup;
             }
         }
         if (! SSL_set_fd(conn, server_s)) {
             printlog(1, "TLS error1");
-            return(ERR_TIMESTAMP);
+            goto cleanup;
         } else {
            if (SSL_connect(conn) != 1) {
                printlog(1, "TLS error2");
-               return(ERR_TIMESTAMP);
+               goto cleanup;
            }
         }
         if (verifycert) {
             X509 *cert = SSL_get_peer_certificate(conn);
             if (cert == NULL) {
                 printlog(1, "Certificate verification failed for %s: no certificate presented", host);
-                return(ERR_TIMESTAMP);
+                goto cleanup;
             }
             if (X509_check_host(cert, host, strlen(host), 0, NULL) != 1) {
                 printlog(1, "Certificate hostname mismatch for %s", host);
                 X509_free(cert);
-                return(ERR_TIMESTAMP);
+                goto cleanup;
             }
             X509_free(cert);
         }
@@ -583,29 +589,53 @@ static double getHTTPdate(
         precision--;
         when += nap;
     } while (precision >= 1);
-    close(server_s);
-
-    #ifdef ENABLE_HTTPS
-    if (scheme && conn) {
-        SSL_shutdown(conn);
-        SSL_free(conn);
-        conn = NULL;
-    }
-    #endif
 
     /* Rounding */
     if (debug) printlog(0, "when: %ld, nap: %ld", when, nap);
-    if (offset == LLONG_MAX) return(ERR_TIMESTAMP);
-    if (when + nap == 1000000000 && offset == 0) return 0;
+    if (offset == LLONG_MAX) {
+        result_timestamp = ERR_TIMESTAMP;
+        goto cleanup;
+    }
+    if (when + nap == 1000000000 && offset == 0) {
+        result_timestamp = 0;
+        goto cleanup;
+    }
 
     /* Return the time delta between web server time (timevalue)
        and system time (now)
     */
     if (first_offset < 0) {
-        return((double)-first_offset + (1000000000-(double)when)/1000000000);
+        result_timestamp = ((double)-first_offset + (1000000000-(double)when)/1000000000);
     } else {
-        return((double)-first_offset + 1 - ((double)when/1000000000));
+        result_timestamp = ((double)-first_offset + 1 - ((double)when/1000000000));
     }
+
+cleanup:
+    if (auth_buffer) {
+        free(auth_buffer);
+        auth_buffer = NULL;
+    }
+    if (proxy_auth_buffer) {
+        free(proxy_auth_buffer);
+        proxy_auth_buffer = NULL;
+    }
+    if (res_head) {
+        freeaddrinfo(res_head);
+        res_head = NULL;
+    }
+    #ifdef ENABLE_HTTPS
+    if (conn) {
+        SSL_shutdown(conn);
+        SSL_free(conn);
+        conn = NULL;
+    }
+    #endif
+    if (server_s >= 0) {
+        close(server_s);
+        server_s = -1;
+    }
+
+    return result_timestamp;
 }
 
 
