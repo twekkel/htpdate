@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <time.h>
@@ -65,6 +66,13 @@
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #error "OpenSSL 1.1.0 or newer required"
 #endif
+
+/* Is host a literal IPv4/IPv6 address? */
+static int is_ip_literal(const char *host) {
+    unsigned char buf[sizeof(struct in6_addr)];
+    return inet_pton(AF_INET, host, buf) == 1 ||
+           inet_pton(AF_INET6, host, buf) == 1;
+}
 #endif
 
 #define LICENSE "\
@@ -487,6 +495,13 @@ static double getHTTPdate(
             goto cleanup;
         }
         SSL_set_tlsext_host_name(conn, host);
+        if (verifycert &&
+            !(is_ip_literal(host)
+                ? X509_VERIFY_PARAM_set1_ip_asc(SSL_get0_param(conn), host)
+                : SSL_set1_host(conn, host))) {
+            printlog(1, "TLS error: cannot set verify host for %s", host);
+            goto cleanup;
+        }
         if (proxy) {
             rc = proxyCONNECT(server_s, host, port, proxy, proxyport, httpversion);
             if (rc != 1) {
@@ -499,22 +514,13 @@ static double getHTTPdate(
             goto cleanup;
         } else {
            if (SSL_connect(conn) != 1) {
-               printlog(1, "TLS error2");
+               if (verifycert && SSL_get_verify_result(conn) != X509_V_OK)
+                   printlog(1, "Certificate verification failed for %s: %s", host,
+                       X509_verify_cert_error_string(SSL_get_verify_result(conn)));
+               else
+                   printlog(1, "TLS error2");
                goto cleanup;
            }
-        }
-        if (verifycert) {
-            X509 *cert = SSL_get_peer_certificate(conn);
-            if (cert == NULL) {
-                printlog(1, "Certificate verification failed for %s: no certificate presented", host);
-                goto cleanup;
-            }
-            if (X509_check_host(cert, host, strlen(host), 0, NULL) != 1) {
-                printlog(1, "Certificate hostname mismatch for %s", host);
-                X509_free(cert);
-                goto cleanup;
-            }
-            X509_free(cert);
         }
     }
     #endif
