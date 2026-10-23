@@ -464,6 +464,7 @@ static double getHTTPdate(
     do {
         server_s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
         if (server_s < 0) {
+            rc = -1;
             continue;
         }
 
@@ -482,7 +483,7 @@ static double getHTTPdate(
         res_head = NULL;
     }
 
-    if (rc) {
+    if (rc != 0 || server_s < 0) {
         printlog(1, "%s connection failed", host);
         goto cleanup;
     }
