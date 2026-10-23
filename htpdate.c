@@ -337,6 +337,7 @@ static SSL_CTX *get_tls_ctx(void) {
         SSL_CTX_set_default_verify_paths(tls_ctx);
         SSL_CTX_set_verify_depth(tls_ctx, 4);
         if (verifycert) SSL_CTX_set_verify(tls_ctx, SSL_VERIFY_PEER, NULL);
+        SSL_CTX_set_options(tls_ctx, SSL_OP_NO_TICKET);
         atexit(free_tls_ctx);
     }
     return tls_ctx;
