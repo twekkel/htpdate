@@ -110,7 +110,7 @@ There is NO WARRANTY, to the extent permitted by law."
 /* By default turn off "debug" and "log" mode  */
 static int debug   = 0;
 static int logmode = 0;
-static int verifycert = 0;
+static int verifycert = 1;
 
 
 /* Insertion sort is more efficient (and smaller) than qsort for small lists */
@@ -785,7 +785,7 @@ Usage: htpdate [-046acdhlnqstvxDF] [-f driftfile] [-i pidfile] [-m minpoll]\n\
   -4    Force IPv4 name resolution only\n\
   -6    Force IPv6 name resolution only\n\
   -a    adjust time smoothly\n\
-  -c    verify server certificate\n\
+  -c    disable server certificate verification\n\
   -d    debug mode\n\
   -D    daemon mode\n\
   -f    drift/frequency file\n\
@@ -920,8 +920,8 @@ int main(int argc, char *argv[]) {
         case 'a':               /* adjust time */
             setmode = 1;
             break;
-        case 'c':               /* server certificate verification */
-            verifycert = 1;
+        case 'c':               /* disable server certificate verification */
+            verifycert = 0;
             break;
         case 'd':               /* turn debug on */
             if (debug <= 3) debug++;
