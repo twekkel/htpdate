@@ -1058,10 +1058,6 @@ int main(int argc, char *argv[]) {
     if (sw_gid) swgid(sw_gid);
     if (sw_uid) swuid(sw_uid);
 
-    #ifdef ENABLE_HTTPS
-    SSL_library_init();
-    #endif
-
     /* Infinite poll cycle loop in daemonize or foreground mode */
     do {
 
