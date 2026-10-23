@@ -320,9 +320,15 @@ static void free_tls_ctx(void) {
 
 static SSL_CTX *get_tls_ctx(void) {
     if (tls_ctx == NULL) {
-        tls_ctx = SSL_CTX_new(TLS_method());
+        tls_ctx = SSL_CTX_new(TLS_client_method());
         if (tls_ctx == NULL) {
             printlog(1, "Error creating TLS context");
+            return NULL;
+        }
+        if (!SSL_CTX_set_min_proto_version(tls_ctx, TLS1_2_VERSION)) {
+            printlog(1, "Error setting minimum TLS version");
+            SSL_CTX_free(tls_ctx);
+            tls_ctx = NULL;
             return NULL;
         }
         SSL_CTX_set_default_verify_paths(tls_ctx);
