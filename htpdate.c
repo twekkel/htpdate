@@ -307,6 +307,31 @@ static int proxyCONNECT(
     }
     return ret;
 }
+
+/* Create TLS context on first use only and reused for every connection */
+static SSL_CTX *tls_ctx = NULL;
+
+static void free_tls_ctx(void) {
+    if (tls_ctx) {
+        SSL_CTX_free(tls_ctx);
+        tls_ctx = NULL;
+    }
+}
+
+static SSL_CTX *get_tls_ctx(void) {
+    if (tls_ctx == NULL) {
+        tls_ctx = SSL_CTX_new(TLS_method());
+        if (tls_ctx == NULL) {
+            printlog(1, "Error creating TLS context");
+            return NULL;
+        }
+        SSL_CTX_set_default_verify_paths(tls_ctx);
+        SSL_CTX_set_verify_depth(tls_ctx, 4);
+        if (verifycert) SSL_CTX_set_verify(tls_ctx, SSL_VERIFY_PEER, NULL);
+        atexit(free_tls_ctx);
+    }
+    return tls_ctx;
+}
 #endif
 
 
@@ -437,13 +462,15 @@ static double getHTTPdate(
     }
 
     #ifdef ENABLE_HTTPS
-    SSL_CTX *tls_ctx = SSL_CTX_new(TLS_method());
-    SSL_CTX_set_default_verify_paths(tls_ctx);
-    SSL_CTX_set_verify_depth(tls_ctx, 4);
-    if (verifycert) SSL_CTX_set_verify(tls_ctx, SSL_VERIFY_PEER, NULL);
-    SSL *conn = SSL_new(tls_ctx);
-    SSL_set_tlsext_host_name(conn, host);
+    SSL *conn = NULL;
     if (scheme) {
+        SSL_CTX *ctx = get_tls_ctx();
+        if (ctx == NULL || (conn = SSL_new(ctx)) == NULL) {
+            printlog(1, "TLS error0");
+            close(server_s);
+            return(ERR_TIMESTAMP);
+        }
+        SSL_set_tlsext_host_name(conn, host);
         if (proxy) {
             rc = proxyCONNECT(server_s, host, port, proxy, proxyport, httpversion);
             if (rc != 1) {
@@ -564,8 +591,6 @@ static double getHTTPdate(
         SSL_free(conn);
         conn = NULL;
     }
-    if (tls_ctx)
-        SSL_CTX_free(tls_ctx);
     #endif
 
     /* Rounding */
