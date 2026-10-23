@@ -62,6 +62,9 @@
 #ifdef ENABLE_HTTPS
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#error "OpenSSL 1.1.0 or newer required"
+#endif
 #endif
 
 #define LICENSE "\
