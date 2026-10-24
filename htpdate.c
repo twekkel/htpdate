@@ -542,12 +542,16 @@ static double getHTTPdate(
         /* Initialize RTT (start of measurement) */
         long rtt = now.tv_sec;
 
-        /* Wait till we reach the desired time, "when" */
+        /* Wait till we reach the desired time, "when" (minus latency).
+           When latency > when, the target lies in the previous second
+        */
+        long target = when - latency;
+        if (target < 0) target += 1000000000;
         sleepspec.tv_sec = 0;
-        if (when - latency >= now.tv_nsec) {
-            sleepspec.tv_nsec = when - now.tv_nsec - latency;
+        if (target >= now.tv_nsec) {
+            sleepspec.tv_nsec = target - now.tv_nsec;
         } else {
-            sleepspec.tv_nsec = 1000000000 + when - now.tv_nsec - latency;
+            sleepspec.tv_nsec = 1000000000 + target - now.tv_nsec;
             rtt++;
         }
 
@@ -564,7 +568,7 @@ static double getHTTPdate(
             clock_gettime(CLOCK_REALTIME, &now);
 
             /* rtt contains round trip time in nanoseconds */
-            rtt = (now.tv_sec - rtt) * 1000000000 + now.tv_nsec - when + latency;
+            rtt = (now.tv_sec - rtt) * 1000000000 + now.tv_nsec - target;
 
              /* Obtain rtt/latency first */
             if (latency == 0) {
