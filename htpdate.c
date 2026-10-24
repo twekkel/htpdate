@@ -73,6 +73,9 @@ static int is_ip_literal(const char *host) {
     return inet_pton(AF_INET, host, buf) == 1 ||
            inet_pton(AF_INET6, host, buf) == 1;
 }
+#else
+/* Opaque placeholder so SSL pointers (always NULL) compile without OpenSSL */
+typedef struct ssl_st SSL;
 #endif
 
 #define LICENSE "\
@@ -252,20 +255,43 @@ static long long getoffset(char remote_time[25]) {
 }
 
 
-static int sendHEAD(int server_s, char *headrequest, char *buffer) {
-    int ret = (int)send(server_s, headrequest, strlen(headrequest), 0);
+/* Send a HEAD request and read the response headers.
+   If conn is non-NULL it is an SSL connection (ENABLE_HTTPS) and is used
+   instead of the plain socket server_s.
+   Returns 1 when data was received, 0 on error or no data.
+*/
+static int sendHEAD(int server_s, SSL *conn, char *headrequest, char *buffer) {
+    size_t len = strlen(headrequest);
+    int ret;
+
+#ifndef ENABLE_HTTPS
+    (void)conn;  /* TLS not compiled in */
+#endif
+
+#ifdef ENABLE_HTTPS
+    if (conn)
+        ret = SSL_write(conn, headrequest, (int)len);
+    else
+#endif
+        ret = (int)send(server_s, headrequest, len, 0);
 
     if (ret < 0) {
-        printlog(1, "Error sending");
-        return -1;
+        printlog(1, "Error sending: %i", ret);
+        return 0;
     }
 
     int bytes_read = 0;
     while (bytes_read < BUFFERSIZE - 1) {
+        int n;
         /* Receive data from the web server
-           The return code from recv() is the number of bytes received
+           The return code is the number of bytes received
         */
-        int n = recv(server_s, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read, 0);
+#ifdef ENABLE_HTTPS
+        if (conn)
+            n = SSL_read(conn, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read);
+        else
+#endif
+            n = (int)recv(server_s, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read, 0);
         if (n <= 0) break;
         bytes_read += n;
         buffer[bytes_read] = '\0';
@@ -277,27 +303,6 @@ static int sendHEAD(int server_s, char *headrequest, char *buffer) {
 
 
 #ifdef ENABLE_HTTPS
-static int sendHEADTLS(SSL *conn, char *headrequest, char *buffer) {
-    int ret = SSL_write(conn, headrequest, strlen(headrequest));
-
-    if (ret < 0) {
-        printlog(1, "Error sending: %i", ret);
-        return -1;
-    }
-
-    int bytes_read = 0;
-    while (bytes_read < BUFFERSIZE - 1) {
-        int n = SSL_read(conn, buffer + bytes_read, BUFFERSIZE - 1 - bytes_read);
-        if (n <= 0) break;
-        bytes_read += n;
-        buffer[bytes_read] = '\0';
-        if (strstr(buffer, "\r\n\r\n")) break;  /* end of HTTP headers */
-    }
-
-    return bytes_read > 0;
-}
-
-
 static int proxyCONNECT(
     int server_s,
     const char *host, const char *port,
@@ -372,9 +377,7 @@ static double getHTTPdate(
     char                *proxy_auth_buffer = NULL;
     double              result_timestamp = ERR_TIMESTAMP;
 
-    #ifdef ENABLE_HTTPS
-    SSL                 *conn = NULL;
-    #endif
+    SSL                 *conn = NULL;  /* NULL means plain HTTP */
 
     /* Connect to web server via proxy server or directly */
     memset(&hints, 0, sizeof(hints));
@@ -551,12 +554,7 @@ static double getHTTPdate(
         nanosleep(&sleepspec, NULL);
 
         /* Send HEAD request */
-        #ifdef ENABLE_HTTPS
-        if (scheme)
-            rc = sendHEADTLS(conn, headrequest, buffer);
-        else
-        #endif
-            rc = sendHEAD(server_s, headrequest, buffer);
+        rc = sendHEAD(server_s, conn, headrequest, buffer);
 
         if (!rc) {
             printlog(1, "error from %s:%s", host, port );
