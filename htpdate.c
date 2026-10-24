@@ -850,25 +850,14 @@ static void runasdaemon(const char *pidfile) {
         exit(1);
     }
 
-    /* Second fork, to become the grandchild */
-    pid = fork();
-    if (pid < 0) {
-        printlog(1, "fork()");
+    /* Write a pid file */
+    pid_file = fopen(pidfile, "w");
+    if (!pid_file) {
+        printlog(1, "Error writing pid file");
         exit(1);
     }
-
-    if (pid > 0) {
-        /* Write a pid file */
-        pid_file = fopen(pidfile, "w");
-        if (!pid_file) {
-            printlog(1, "Error writing pid file");
-            exit(1);
-        } else {
-            fprintf(pid_file, "%d\n", pid);
-            fclose(pid_file);
-        }
-        exit(0);
-    }
+    fprintf(pid_file, "%d\n", (int)getpid());
+    fclose(pid_file);
 }
 
 
