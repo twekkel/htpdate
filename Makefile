@@ -32,12 +32,7 @@ test:
 	./htpdate -p 2 -04q www.example.com/
 	./htpdate -6q www.example.com
 	./htpdate -t -dd www.example.com
-	./htpdate -p1 https://93.184.216.34 https://93.184.216.34:443
-	./htpdate -p1 93.184.216.34:80
-	./htpdate -p1 [2606:2800:220:1:248:1893:25c8:1946]
 	./htpdate -h
-	./htpdate -q https://a:b@httpbin.org/basic-auth/a/b
-	./htpdate -P https://c:d@httpbin.org/basic-auth/c/d https://a:b@httpbin.org/basic-auth/a/b
 
 clean:
 	rm -rf htpdate

@@ -101,6 +101,7 @@ There is NO WARRANTY, to the extent permitted by law."
 #define DEFAULT_MIN_SLEEP        900               /* 15 minutes */
 #define DEFAULT_MAX_SLEEP        115200            /* 32 hours */
 #define MAX_DRIFT                32768000          /* 500 PPM */
+#define DEFAULT_PID_FILE         "/var/run/htpdate.pid"
 #define HEADREQUESTSIZE          1024
 #define URLSIZE                  128
 #define BUFFERSIZE               8192
@@ -818,7 +819,8 @@ static void runasdaemon(const char *pidfile) {
     pid_t pid;
 
     /* Check if htpdate is already running (pid exists)*/
-    if (pidfile && (pid_file = fopen(pidfile, "r"))) {
+    pid_file = fopen(pidfile, "r");
+    if (pid_file) {
         fputs("htpdate already running\n", stderr);
         exit(1);
     }
@@ -850,15 +852,24 @@ static void runasdaemon(const char *pidfile) {
         exit(1);
     }
 
-    if (pidfile) {
+    /* Second fork, to become the grandchild */
+    pid = fork();
+    if (pid < 0) {
+        printlog(1, "fork()");
+        exit(1);
+    }
+
+    if (pid > 0) {
         /* Write a pid file */
         pid_file = fopen(pidfile, "w");
         if (!pid_file) {
             printlog(1, "Error writing pid file");
             exit(1);
+        } else {
+            fprintf(pid_file, "%d\n", pid);
+            fclose(pid_file);
         }
-        fprintf(pid_file, "%d\n", (int)getpid());
-        fclose(pid_file);
+        exit(0);
     }
 }
 
@@ -870,7 +881,7 @@ int main(int argc, char *argv[]) {
     char            *scheme = NULL;
     char            *auth = NULL, *proxyauth = NULL;
     const char      *httpversion = DEFAULT_HTTP_VERSION;
-    const char      *pidfile = NULL;
+    const char      *pidfile = DEFAULT_PID_FILE;
     char            *user = NULL, *userstr = NULL, *group = NULL;
     double          timeavg, drift = 0;
     double          timedelta[MAX_HTTP_HOSTS-1];
