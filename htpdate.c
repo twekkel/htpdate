@@ -1,5 +1,5 @@
 /*
-    htpdate v2.0.2
+    htpdate v2.1.0
 
     Eddy Vervest <eddy@vervest.org>
 
@@ -88,7 +88,7 @@ your option) any later version.\n\
 \n\
 There is NO WARRANTY, to the extent permitted by law."
 
-#define VERSION                  "2.0.2"
+#define VERSION                  "2.1.0"
 #define MAX_HTTP_HOSTS           16                /* 16 web servers */
 #define DEFAULT_HTTP_PORT        "80"
 #define DEFAULT_PROXY_PORT       "8080"
