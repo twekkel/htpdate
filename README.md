@@ -2,6 +2,23 @@
 
 [![main](https://github.com/twekkel/htpdate/actions/workflows/main.yml/badge.svg)](https://github.com/twekkel/htpdate/actions/workflows/main.yml)
 
+# htpdate
+
+> [!NOTE]
+> ### Maintenance Notice & Migration to httpdate
+>
+> **`htpdate` is entering maintenance mode. Version 2.1.x will be the final release line.**
+>
+> Moving forward, the 2.1.x branch will receive critical bug fixes only—no new features or major enhancements will be added.
+>
+> **Why the change?**
+> Maintaining custom sockets, TLS, and DNS resolution code requires significant work that has little to do with timekeeping. Transitioning to [**`httpdate`**](https://github.com/twekkel/httpdate) delegates network transport to a standard library (`libcurl`), allowing development to focus on accurate clock synchronization.
+>
+> **What should you do?**
+> All users and package maintainers are advised to migrate to [**`httpdate`**](https://github.com/twekkel/httpdate). It serves as the modern successor to `htpdate`.
+
+---
+
 ### Time synchronization... quick and dirty
 
 ```
